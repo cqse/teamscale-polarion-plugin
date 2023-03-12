@@ -16,6 +16,7 @@ import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IFolder;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
+import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IDataService;
@@ -26,7 +27,9 @@ import com.polarion.platform.persistence.model.IPObjectList;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 
 /**
- * This is the servlet ...
+ * This is the servlet that represents the endpoint for the Teamscale Polarion plugin.
+ * Its main job is to return a json object representing updates on work items
+ * of a particular document, in a given folder (space) and project.
  * 
  * @author Bruno da Silva
  */
@@ -116,8 +119,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 	}   
 
 	private boolean validateParameters(ITrackerService trackerService, String projectId, String space, String doc) {
+		//Needs to be executed in this order. Space validation only runs after projectId is validated.
+		// DocId is validated only if projectId and SpaceId are validated.
 		return validateProjectId(trackerService, projectId) && 
-				validateSpaceId(trackerService, projectId, space);
+				validateSpaceId(trackerService, projectId, space) &&
+				validateDocumentId(trackerService, projectId, space, doc);
 	}
 
 	private boolean validateProjectId(ITrackerService trackerService, String projectId) {
@@ -140,12 +146,25 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		return trackerService.getFolderManager().existFolder(projId, spaceId);	
 	}	
 	
-	private boolean validateDocumentId(ITrackerService trackerService, String space, String docId) {
-		//I haven't found in the Polarion Java API a straightforward way to validade a docId. 
+	//This helper method should be called after validating the space (aka folder)
+	private boolean validateDocumentId(ITrackerService trackerService, String projId, String space, String docId) {
+		this.getServletContext().log("Attempting to read module: " + docId);
+		//Haven't found in the Polarion Java API a straightforward way to validate a docId. 
 		//Possible solution:
 		//select all documents in the given valid space (folder)
 		// then iterate through the documents to validate the given docId
-		return true;
+		IDataService dataService = trackerService.getDataService();
+        String query = "select M.C_PK, M.C_ID from MODULE M "
+        		+ "inner join PROJECT P on M.FK_URI_PROJECT = P.C_URI "
+        		+ "and P.C_ID = '" + projId + "' "
+        		+ "and M.C_MODULEFOLDER = '" + space + "'";
+        IPObjectList<IModule> modules = dataService.sqlSearch(query);
+        for (IModule module : modules) {
+        	if (module.getId().equals(docId)) {
+        		return true;
+        	}
+        }
+		return false;
 	}
 
 }
