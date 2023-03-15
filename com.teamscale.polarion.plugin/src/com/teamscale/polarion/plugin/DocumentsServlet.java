@@ -45,9 +45,6 @@ public class DocumentsServlet extends HttpServlet {
     @Override
     protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws ServletException, IOException {
        
-        // Strategy 1: from the tracker service get the moduleManager (IModuleManager)
-    	//Then get the WIs by calling getModuleWorkItems​(IProject project, java.lang.String query, java.lang.String sort, java.lang.String moduleFolder, int limit)
-       	
         ITrackerService trackerService = (ITrackerService) PlatformContext.getPlatform().lookupService(ITrackerService.class);
 
         String projStr = "elibrary";
@@ -58,17 +55,17 @@ public class DocumentsServlet extends HttpServlet {
 //        		+ "AND M.C_ID = 'MyDummyDoc' "
 //				+ "AND M.C_LOCATION = 'elibrary/Testing/MySubSpace' ";        		
 //        		+ "AND M.C_MODULEFOLDER = 'MySubSpace'"; // Works
-//				+ "AND M.C_MODULELOCATION = 'MySubSpace/MyDummyDoc'"; //Doesn't worl
+//				+ "AND M.C_MODULELOCATION = 'MySubSpace/MyDummyDoc'"; //Doesn't work
 
         IDataService dataService = trackerService.getDataService();
         IPObjectList<IModule> modules = dataService.sqlSearch(query);
         for (IModule module : modules) {
         	System.out.println("Module ID: " + module.getId()
-        	+ " \n Location path: " + module.getModuleLocation().getLocationPath()
-        	+ " \n KEY_LOCATION: "+module.getValue(IModule.KEY_LOCATION)
+        	+ " \n Location path: " + module.getModuleLocation().getLocationPath() // <folder>/<docId>
+        	+ " \n KEY_LOCATION: "+module.getValue(IModule.KEY_LOCATION) // Full Location obj
         	+ " \n KEY_TITLE: "+module.getValue(IModule.KEY_TITLE)
-        	+ " \n KEY_MODULEFOLDER: "+module.getValue(IModule.KEY_MODULEFOLDER)
-        	+ " \n KEY_MODULELOCATION: "+module.getValue(IModule.KEY_MODULELOCATION));
+        	+ " \n KEY_MODULEFOLDER: "+module.getValue(IModule.KEY_MODULEFOLDER) // <folder>
+        	+ " \n KEY_MODULELOCATION: "+module.getValue(IModule.KEY_MODULELOCATION)); // simple location obj
         }
         System.out.println("Total: "+modules.size());  
         

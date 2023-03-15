@@ -3,9 +3,8 @@ package com.teamscale.polarion.plugin;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -13,9 +12,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.gson.Gson;
-import com.polarion.alm.projects.model.IFolder;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
+import com.polarion.alm.tracker.model.ICategory;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.core.PlatformContext;
@@ -25,6 +24,7 @@ import com.polarion.platform.persistence.diff.IDiffManager;
 import com.polarion.platform.persistence.diff.IFieldDiff;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
+import com.teamscale.polarion.plugin.model.WorkItemForJson;
 
 /**
  * This is the servlet that represents the endpoint for the Teamscale Polarion plugin.
@@ -51,57 +51,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		
 		//Check if the request params are valid IDs before putting them into a SQL query
 		if (validateParameters(trackerService, projId, spaceId, docId)) {
-			String sqlQuery = "select * from WORKITEM WI "
-					+ "inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI "
-					+ "inner join MODULE M on WI.FK_URI_MODULE = M.C_URI "
-					+ "where P.C_ID = '" + projId + "'"
-					+ " AND M.C_ID = '" + docId + "'"
-					+ " AND M.C_MODULEFOLDER = '" + spaceId + "'";
-			//        		+ " AND WI.C_REV = 6";
-			//				+ "AND M.C_LOCATION = 'elibrary/Testing/MySubSpace' "; //Doesn't work           
-			//				+ "AND M.C_MODULELOCATION = 'MySubSpace/MyDummyDoc'"; //Doesn't work
 
-			System.out.println(sqlQuery);
-
-			ArrayList<WorkItemChange> workItemsChange = new ArrayList<WorkItemChange>();
-
-			IDataService dataService = trackerService.getDataService();
-			IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
-			for (IWorkItem workItem : workItems) {
-				System.out.println("WI id: " + workItem.getId() + " title: "+workItem.getTitle());
-				// System.out.println(workItem.getLastRevision()); //"Returns the last revision in the History of this object. (Does not return revisions from included child objects like Work Items or Document Workflow Signatures.)"
-				// System.out.println(workItem.getDataRevision()); //"Returns revision from which the data was actualy read."
-				// IModule module = trackerService.getModuleManager().getContainingModule(workItem);
-				// System.out.println(" => Module Title or Name: "+ workItem.getModule().getTitleOrName()
-				//		+ " ID: " + workItem.getModule().getId()
-				//		+ " location: " + workItem.getModule().getModuleLocation()
-				//		+ " folder: " + workItem.getModule().getFolder().getTitleOrName());
-
-				WorkItemChange workItemChange = new WorkItemChange(workItem.getId());
-				workItemsChange.add(workItemChange);
-
-				if (workItem.getId().equals("EL-36")) {
-					IPObjectList<IWorkItem> workItemsHistory = dataService.getObjectHistory(workItem);
-					for (IWorkItem iWorkItem : workItemsHistory) {
-						System.out.println(iWorkItem.getId() + " rev: " + iWorkItem.getDataRevision());
-
-					}
-					IDiffManager diffManager = dataService.getDiffManager();
-					IFieldDiff[] fieldDiffs = diffManager.generateDiff(workItemsHistory.get(1), workItemsHistory.get(2), new HashSet<String>());
-					for (int i = 0; i < fieldDiffs.length; i++) {
-						System.out.println(fieldDiffs[i].getFieldName() + " : \n"
-								+ fieldDiffs[i].getBefore() + " => " + fieldDiffs[i].getAfter() + "\n"
-								+ "added? " + fieldDiffs[i].getAdded() + "\n"
-								+ "removed? " + fieldDiffs[i].getRemoved());
-					}
-
-				}
-			}
-			System.out.println("Total: "+workItems.size());   
+			ArrayList<WorkItemForJson> allChanges = retrieveChanges(trackerService, projId, spaceId, docId);
 
 			Gson gson = new Gson();
-			System.out.println(gson.toJson(workItemsChange));
-			String jsonResult = gson.toJson(workItemsChange);
+			System.out.println(gson.toJson(allChanges));
+			String jsonResult = gson.toJson(allChanges);
 			res.setContentType("application/json");
 			PrintWriter out = res.getWriter();        
 			out.print(jsonResult);
@@ -116,7 +71,133 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		doGet(req, resp);
-	}   
+	}  
+	
+	private ArrayList<WorkItemForJson> retrieveChanges(ITrackerService trackerService, String projId, String spaceId, String docId) {
+		
+		String sqlQuery = "select * from WORKITEM WI "
+				+ "inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI "
+				+ "inner join MODULE M on WI.FK_URI_MODULE = M.C_URI "
+				+ "where P.C_ID = '" + projId + "'"
+				+ " AND M.C_ID = '" + docId + "'"
+				+ " AND M.C_MODULEFOLDER = '" + spaceId + "'";
+		//        		+ " AND WI.C_REV = 6";
+		//				+ "AND M.C_LOCATION = 'elibrary/Testing/MySubSpace' "; //Doesn't work           
+		//				+ "AND M.C_MODULELOCATION = 'MySubSpace/MyDummyDoc'"; //Doesn't work
+		
+		ArrayList<WorkItemForJson> allChanges = new ArrayList<WorkItemForJson>();
+
+		IDataService dataService = trackerService.getDataService();
+		IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
+		for (IWorkItem workItem : workItems) {
+			System.out.println("WI id: " + workItem.getId() + " title: "+workItem.getTitle());
+			// System.out.println(workItem.getLastRevision()); //"Returns the last revision in the History of this object. (Does not return revisions from included child objects like Work Items or Document Workflow Signatures.)"
+			// System.out.println(workItem.getDataRevision()); //"Returns revision from which the data was actually read."
+			// IModule module = trackerService.getModuleManager().getContainingModule(workItem);
+			// System.out.println(" => Module Title or Name: "+ workItem.getModule().getTitleOrName()
+			//		+ " ID: " + workItem.getModule().getId()
+			//		+ " location: " + workItem.getModule().getModuleLocation()
+			//		+ " folder: " + workItem.getModule().getFolder().getTitleOrName());
+
+			WorkItemForJson workItemPlugin = processHistory(workItem, dataService);
+			
+//			Gson gson = new Gson();
+//			System.out.println(gson.toJson(workItemPlugin));
+			
+			allChanges.add(workItemPlugin);
+
+		}
+		//TODO: debugging only
+		System.out.println("Total: "+workItems.size()); 
+		
+		return allChanges;
+	}
+	
+	private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
+		WorkItemForJson workItemPlugin = castWorkItem(workItem);
+		IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
+		if (workItemHistory != null) {
+			if (workItemHistory.size() == 1 && workItemHistory.get(0) != null ) {
+				// No changes in history when size == 1 (the WI remains as created)
+				workItemPlugin.setRevision(workItemHistory.get(0).getRevision());
+			} else if (workItemHistory.size() > 1) {
+				IDiffManager diffManager = dataService.getDiffManager();
+				Collection<WorkItemChange> workItemChanges = collectWorkItemChanges(workItemHistory, diffManager);
+				workItemPlugin.setWorkItemChanges(workItemChanges);
+				
+				//From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest (last)."
+				//https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
+				// Then, we get the last one from the history as the current revision
+				workItemPlugin.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
+			} else {
+				//No history. Empty list. From Polarion JavaDoc:
+				// "An empty list is returned if the object does not support history retrieval."
+				// "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
+			}
+		}
+		return workItemPlugin;
+	}
+	
+	private Collection<WorkItemChange> collectWorkItemChanges(IPObjectList<IWorkItem> workItemHistory, IDiffManager diffManager) {
+		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
+		int index = 0;
+		int next = 1;
+		while (next < workItemHistory.size()) {
+			//TODO: ignore fields?
+			IFieldDiff[] fieldDiffs = diffManager.generateDiff(workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
+			Collection<WorkItemChange> fieldChangesToAdd = collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
+			if (fieldChangesToAdd != null && fieldChangesToAdd.size() > 0) {
+				workItemChanges.addAll(fieldChangesToAdd);
+			}
+			index++;
+			next++;
+		}	
+		return workItemChanges;
+	}
+	
+	private Collection<WorkItemChange> collectFieldChanges(IFieldDiff[] fieldDiffs, String revision) {
+		Collection<WorkItemChange> fieldChanges = new ArrayList<WorkItemChange>();
+		for (IFieldDiff fieldDiff : fieldDiffs) {
+			WorkItemChange workItemChange = new WorkItemChange(revision, fieldDiff.getFieldName(), 
+					null, null, null, null);
+			if (fieldDiff.isCollection()) {
+				Collection<ICategory> added = fieldDiff.getAdded(); 
+				Collection<ICategory> removed = fieldDiff.getRemoved();				
+				if (added != null && added.size() > 0) {
+					String[] asStringArr = added.stream().map(cat -> cat.getName()).toArray( size -> new String[size]);
+					workItemChange.setElementsAdded(asStringArr);
+				}
+				if (removed != null && removed.size() > 0) {
+					String[] asStringArr = removed.stream().map(cat -> cat.getName()).toArray( size -> new String[size]);
+					workItemChange.setElementsRemoved(asStringArr);
+				}			
+			} else {
+				String before = fieldDiff.getBefore() == null ? "" : fieldDiff.getBefore().toString();
+				String after = fieldDiff.getAfter() == null ? "" : fieldDiff.getAfter().toString();	
+				workItemChange.setFieldValueBefore(before);
+				workItemChange.setFieldValueAfter(after);
+			}
+			fieldChanges.add(workItemChange);		
+		}
+		return fieldChanges;
+	}
+		
+	private WorkItemForJson castWorkItem(IWorkItem workItem) {
+		WorkItemForJson workItemPlugin = new WorkItemForJson(workItem.getId());
+		workItemPlugin.setRevision(workItem.getRevision());
+		if (workItem.getDescription() != null)
+			workItemPlugin.setDescription(workItem.getDescription().getContent());
+		if (workItem.getDueDate() != null)
+			workItemPlugin.setDueDate(workItem.getDueDate().toString());
+		if (!workItem.getHyperlinks().isEmpty())
+			workItemPlugin.setHyperLinks((String[]) workItem.getHyperlinks().toArray(size -> new String[size]));
+		if (workItem.getInitialEstimate() != null)
+			workItemPlugin.setInitialEstimate(workItem.getInitialEstimate().toString());
+		
+		if(workItem.getStatus() != null)
+			workItemPlugin.setStatus(workItem.getStatus().getName());
+		return workItemPlugin;
+	}
 
 	private boolean validateParameters(ITrackerService trackerService, String projectId, String space, String doc) {
 		//Needs to be executed in this order. Space validation only runs after projectId is validated.
@@ -146,7 +227,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		return trackerService.getFolderManager().existFolder(projId, spaceId);	
 	}	
 	
-	//This helper method should be called after validating the space (aka folder)
+	/** This helper method should be called after validating the space (aka folder) **/
 	private boolean validateDocumentId(ITrackerService trackerService, String projId, String space, String docId) {
 		this.getServletContext().log("Attempting to read module: " + docId);
 		//Haven't found in the Polarion Java API a straightforward way to validate a docId. 
