@@ -22,9 +22,11 @@ import com.polarion.platform.persistence.IDataService;
 import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.diff.IDiffManager;
 import com.polarion.platform.persistence.diff.IFieldDiff;
+import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
+import com.teamscale.polarion.plugin.utils.Utils;
 
 /**
  * This is the servlet that represents the endpoint for the Teamscale Polarion plugin.
@@ -99,12 +101,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 			//		+ " location: " + workItem.getModule().getModuleLocation()
 			//		+ " folder: " + workItem.getModule().getFolder().getTitleOrName());
 
-			WorkItemForJson workItemPlugin = processHistory(workItem, dataService);
-			
-//			Gson gson = new Gson();
-//			System.out.println(gson.toJson(workItemPlugin));
-			
-			allChanges.add(workItemPlugin);
+			WorkItemForJson workItemForJson = processHistory(workItem, dataService);			
+			allChanges.add(workItemForJson);
 
 		}
 		//TODO: debugging only
@@ -114,28 +112,31 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 	}
 	
 	private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
-		WorkItemForJson workItemPlugin = castWorkItem(workItem);
+		WorkItemForJson workItemForJson = Utils.castWorkItem(workItem);
 		IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
 		if (workItemHistory != null) {
 			if (workItemHistory.size() == 1 && workItemHistory.get(0) != null ) {
 				// No changes in history when size == 1 (the WI remains as created)
-				workItemPlugin.setRevision(workItemHistory.get(0).getRevision());
+				workItemForJson.setRevision(workItemHistory.get(0).getRevision());
 			} else if (workItemHistory.size() > 1) {
 				IDiffManager diffManager = dataService.getDiffManager();
 				Collection<WorkItemChange> workItemChanges = collectWorkItemChanges(workItemHistory, diffManager);
-				workItemPlugin.setWorkItemChanges(workItemChanges);
-				
-				//From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest (last)."
-				//https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
-				// Then, we get the last one from the history as the current revision
-				workItemPlugin.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
+				workItemForJson.setWorkItemChanges(workItemChanges);	
+				/**
+				 * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest (last)."
+				 * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
+				 * Then, we get the last one from the history as the current revision
+				 **/
+				workItemForJson.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
 			} else {
-				//No history. Empty list. From Polarion JavaDoc:
-				// "An empty list is returned if the object does not support history retrieval."
-				// "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
+				/** 
+				 * No history. Empty list. From Polarion JavaDoc:
+				 *  "An empty list is returned if the object does not support history retrieval."
+				 *  "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
+				 **/
 			}
 		}
-		return workItemPlugin;
+		return workItemForJson;
 	}
 	
 	private Collection<WorkItemChange> collectWorkItemChanges(IPObjectList<IWorkItem> workItemHistory, IDiffManager diffManager) {
@@ -161,42 +162,23 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 			WorkItemChange workItemChange = new WorkItemChange(revision, fieldDiff.getFieldName(), 
 					null, null, null, null);
 			if (fieldDiff.isCollection()) {
-				Collection<ICategory> added = fieldDiff.getAdded(); 
-				Collection<ICategory> removed = fieldDiff.getRemoved();				
+				Collection added = fieldDiff.getAdded(); //Casting to the generic IPObject and checking instance down below
+				Collection removed = fieldDiff.getRemoved();//Casting directly to ICategory		
 				if (added != null && added.size() > 0) {
-					String[] asStringArr = added.stream().map(cat -> cat.getName()).toArray( size -> new String[size]);
-					workItemChange.setElementsAdded(asStringArr);
+					workItemChange.setElementsAdded(Utils.castCollectionToStrArray(added));
 				}
 				if (removed != null && removed.size() > 0) {
-					String[] asStringArr = removed.stream().map(cat -> cat.getName()).toArray( size -> new String[size]);
-					workItemChange.setElementsRemoved(asStringArr);
+					workItemChange.setElementsRemoved(Utils.castCollectionToStrArray(removed));
 				}			
 			} else {
-				String before = fieldDiff.getBefore() == null ? "" : fieldDiff.getBefore().toString();
-				String after = fieldDiff.getAfter() == null ? "" : fieldDiff.getAfter().toString();	
-				workItemChange.setFieldValueBefore(before);
-				workItemChange.setFieldValueAfter(after);
+				workItemChange.setFieldValueBefore(
+						Utils.castFieldValueToString(fieldDiff.getBefore()));
+				workItemChange.setFieldValueAfter(
+						Utils.castFieldValueToString(fieldDiff.getAfter()));
 			}
 			fieldChanges.add(workItemChange);		
 		}
 		return fieldChanges;
-	}
-		
-	private WorkItemForJson castWorkItem(IWorkItem workItem) {
-		WorkItemForJson workItemPlugin = new WorkItemForJson(workItem.getId());
-		workItemPlugin.setRevision(workItem.getRevision());
-		if (workItem.getDescription() != null)
-			workItemPlugin.setDescription(workItem.getDescription().getContent());
-		if (workItem.getDueDate() != null)
-			workItemPlugin.setDueDate(workItem.getDueDate().toString());
-		if (!workItem.getHyperlinks().isEmpty())
-			workItemPlugin.setHyperLinks((String[]) workItem.getHyperlinks().toArray(size -> new String[size]));
-		if (workItem.getInitialEstimate() != null)
-			workItemPlugin.setInitialEstimate(workItem.getInitialEstimate().toString());
-		
-		if(workItem.getStatus() != null)
-			workItemPlugin.setStatus(workItem.getStatus().getName());
-		return workItemPlugin;
 	}
 
 	private boolean validateParameters(ITrackerService trackerService, String projectId, String space, String doc) {
