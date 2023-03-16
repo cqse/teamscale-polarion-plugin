@@ -1,29 +1,17 @@
 package com.teamscale.polarion.plugin.model;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 public class WorkItemChange {
 
 	private String revision; //the revision after the change
-	private String fieldName;
-	/** 
-	 * We either use fieldValueBefore/After 
-	 *  or we use elementsAdded/Removed.
-	 *  This is due to the way Polarion treats categorical values vs. 
-	 *  	other values (e.g., string, numbers, dates).
-	 *  https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/diff/IFieldDiff.html
-	 **/
-	private String fieldValueBefore;
-	private String fieldValueAfter; 
-	private String[] elementsAdded;
-	private String[] elementsRemoved;
+	private Collection<WorkItemFieldDiff> fieldChanges;
+
 	
-	public WorkItemChange(String revision, String fieldName, String fieldValueBefore, 
-			String fieldValueAfter, String[] elementsAdded, String[] elementsRemoved) {
+	public WorkItemChange(String revision) {
 		this.revision = revision;
-		this.fieldName = fieldName;
-		this.fieldValueBefore = fieldValueBefore;
-		this.fieldValueAfter = fieldValueAfter;
-		this.elementsAdded = elementsAdded;
-		this.elementsRemoved = elementsRemoved;
+		fieldChanges = new ArrayList<WorkItemFieldDiff>();
 	}
 	
 	public String getRevision() {
@@ -33,44 +21,16 @@ public class WorkItemChange {
 	public void setRevision(String revision) {
 		this.revision = revision;
 	}
-
-	public String getFieldName() {
-		return fieldName;
+	
+	public void addFieldChange(WorkItemFieldDiff fieldChange) {
+		fieldChanges.add(fieldChange);
 	}
-
-	public void setFieldName(String fieldName) {
-		this.fieldName = fieldName;
+	
+	public Collection<WorkItemFieldDiff> getFieldChanges() {
+		return fieldChanges;
 	}
-
-	public String getFieldValueBefore() {
-		return fieldValueBefore;
-	}
-
-	public void setFieldValueBefore(String fieldValueBefore) {
-		this.fieldValueBefore = fieldValueBefore;
-	}
-
-	public String getFieldValueAfter() {
-		return fieldValueAfter;
-	}
-
-	public void setFieldValueAfter(String fieldValueAfter) {
-		this.fieldValueAfter = fieldValueAfter;
-	}
-
-	public String[] getElementsAdded() {
-		return elementsAdded;
-	}
-
-	public void setElementsAdded(String[] elementsAdded) {
-		this.elementsAdded = elementsAdded;
-	}
-
-	public String[] getElementsRemoved() {
-		return elementsRemoved;
-	}
-
-	public void setElementsRemoved(String[] elementsRemoved) {
-		this.elementsRemoved = elementsRemoved;
+	
+	public void setFieldChanges(Collection<WorkItemFieldDiff> changes) {
+		fieldChanges = changes;
 	}
 }

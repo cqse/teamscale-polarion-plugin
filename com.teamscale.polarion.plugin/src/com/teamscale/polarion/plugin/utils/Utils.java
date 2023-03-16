@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import com.polarion.alm.projects.model.IUser;
 import com.polarion.alm.tracker.model.ICategory;
 import com.polarion.alm.tracker.model.IHyperlinkStruct;
 import com.polarion.alm.tracker.model.ITestSteps;
@@ -58,9 +59,16 @@ public class Utils {
 		if (workItem.getCustomFieldsList() != null &&
 				workItem.getCustomFieldsList().size() > 0)
 			workItemForJson.setCustomFields(castCustomFields(workItem));
+		if (workItem.getAssignees() != null && workItem.getAssignees().size() > 0)
+			workItemForJson.setAssignees(castAssignees(workItem));
 		return workItemForJson;
 	}
 	
+	private static String[] castAssignees(IWorkItem workItem) {
+		List<IUser> assignees = workItem.getAssignees();
+		return assignees.stream().map( assignee -> assignee.getId()).toArray( size -> new String[size]);
+	}
+
 	private static HashMap<String, Object> castCustomFields(IWorkItem workItem) {
 		Collection<String> customFieldsList = workItem.getCustomFieldsList();
 		HashMap<String, Object> converted = new HashMap<String, Object>(customFieldsList.size());
@@ -106,7 +114,7 @@ public class Utils {
 		} else if (value instanceof DurationTime)
 			return ((DurationTime) value).toString();
 		else if (value instanceof ITestSteps) {			
-			return value.toString(); //TODO: Continue work here.
+			return value.toString(); 
 //			return convertTestStepValues((ITestSteps) value);
 		}
 		else {
@@ -141,6 +149,8 @@ public class Utils {
 				return ((ICategory) elem).getName();
 			} else if (elem instanceof IHyperlinkStruct) {
 				return ((IHyperlinkStruct) elem).getValue(IHyperlinkStruct.KEY_URI);
+			} else if (elem instanceof IUser){ 
+				return ((IUser)elem).getId(); 
 			} else if (elem != null){ 
 				return elem.toString(); 
 			} 

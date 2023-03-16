@@ -26,6 +26,7 @@ public class WorkItemForJson {
 	private String type;
 	private String updated; //date-time format
 	private HashMap<String, Object> customFields;
+	private String[] assignees;
 	
 	private Collection<WorkItemChange> workItemChanges;
 	
@@ -199,6 +200,14 @@ public class WorkItemForJson {
 
 	public void setCustomFields(HashMap<String, Object> customFields) {
 		this.customFields = customFields;
+	}
+
+	public String[] getAssignees() {
+		return assignees;
+	}
+
+	public void setAssignees(String[] assignees) {
+		this.assignees = assignees;
 	}
 
 	public Collection<WorkItemChange> getWorkItemChanges() {

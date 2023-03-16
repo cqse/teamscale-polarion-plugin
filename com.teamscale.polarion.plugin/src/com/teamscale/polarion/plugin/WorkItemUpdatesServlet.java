@@ -25,6 +25,7 @@ import com.polarion.platform.persistence.diff.IFieldDiff;
 import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
+import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.Utils;
 
@@ -145,10 +146,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		int next = 1;
 		while (next < workItemHistory.size()) {
 			//TODO: ignore fields?
+			//TODO: group by revision
 			IFieldDiff[] fieldDiffs = diffManager.generateDiff(workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
-			Collection<WorkItemChange> fieldChangesToAdd = collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
-			if (fieldChangesToAdd != null && fieldChangesToAdd.size() > 0) {
-				workItemChanges.addAll(fieldChangesToAdd);
+			WorkItemChange fieldChangesToAdd = collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
+			if (fieldChangesToAdd != null) {
+				workItemChanges.add(fieldChangesToAdd);
 			}
 			index++;
 			next++;
@@ -156,29 +158,35 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		return workItemChanges;
 	}
 	
-	private Collection<WorkItemChange> collectFieldChanges(IFieldDiff[] fieldDiffs, String revision) {
-		Collection<WorkItemChange> fieldChanges = new ArrayList<WorkItemChange>();
+	private WorkItemChange collectFieldChanges(IFieldDiff[] fieldDiffs, String revision) {
+		WorkItemChange workItemChange = new WorkItemChange(revision);
 		for (IFieldDiff fieldDiff : fieldDiffs) {
-			WorkItemChange workItemChange = new WorkItemChange(revision, fieldDiff.getFieldName(), 
-					null, null, null, null);
 			if (fieldDiff.isCollection()) {
 				Collection added = fieldDiff.getAdded(); //Casting to the generic IPObject and checking instance down below
-				Collection removed = fieldDiff.getRemoved();//Casting directly to ICategory		
+				Collection removed = fieldDiff.getRemoved();//Casting directly to ICategory	
 				if (added != null && added.size() > 0) {
-					workItemChange.setElementsAdded(Utils.castCollectionToStrArray(added));
+					WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
+							null, null);
+					fieldChange.setElementsAdded(Utils.castCollectionToStrArray(added));
+					workItemChange.addFieldChange(fieldChange);
 				}
 				if (removed != null && removed.size() > 0) {
-					workItemChange.setElementsRemoved(Utils.castCollectionToStrArray(removed));
+					WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
+							null, null);
+					fieldChange.setElementsRemoved(Utils.castCollectionToStrArray(removed));
+					workItemChange.addFieldChange(fieldChange);
 				}			
 			} else {
-				workItemChange.setFieldValueBefore(
+				WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
+						null, null);
+				fieldChange.setFieldValueBefore(
 						Utils.castFieldValueToString(fieldDiff.getBefore()));
-				workItemChange.setFieldValueAfter(
+				fieldChange.setFieldValueAfter(
 						Utils.castFieldValueToString(fieldDiff.getAfter()));
-			}
-			fieldChanges.add(workItemChange);		
+				workItemChange.addFieldChange(fieldChange);
+			}	
 		}
-		return fieldChanges;
+		return workItemChange;
 	}
 
 	private boolean validateParameters(ITrackerService trackerService, String projectId, String space, String doc) {
