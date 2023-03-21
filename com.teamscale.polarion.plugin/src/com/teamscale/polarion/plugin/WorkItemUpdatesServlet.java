@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -14,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
-import com.polarion.alm.tracker.model.ICategory;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.core.PlatformContext;
@@ -162,20 +162,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		WorkItemChange workItemChange = new WorkItemChange(revision);
 		for (IFieldDiff fieldDiff : fieldDiffs) {
 			if (fieldDiff.isCollection()) {
-				Collection added = fieldDiff.getAdded(); //Casting to the generic IPObject and checking instance down below
-				Collection removed = fieldDiff.getRemoved();//Casting directly to ICategory	
-				if (added != null && added.size() > 0) {
-					WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
-							null, null);
-					fieldChange.setElementsAdded(Utils.castCollectionToStrArray(added));
-					workItemChange.addFieldChange(fieldChange);
-				}
-				if (removed != null && removed.size() > 0) {
-					WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
-							null, null);
-					fieldChange.setElementsRemoved(Utils.castCollectionToStrArray(removed));
-					workItemChange.addFieldChange(fieldChange);
-				}			
+				collectFieldDiffAsCollection(workItemChange, fieldDiff);			
 			} else {
 				WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
 						null, null);
@@ -187,6 +174,55 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 			}	
 		}
 		return workItemChange;
+	}
+
+	private void collectFieldDiffAsCollection(WorkItemChange workItemChange, IFieldDiff fieldDiff) {
+		//Polarion returns unparameterized Collections for these two methods
+		Collection added = fieldDiff.getAdded();
+		Collection removed = fieldDiff.getRemoved();
+		if (added != null && added.size() > 0) {
+			WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
+					null, null);
+			// We check if the collection is hyperlink list first since they're not
+			// convertible into IPObjectList. So, we treat them separately.
+			if (Utils.isCollectionHyperlinkStructList(added)) {
+				fieldChange.setElementsAdded(Utils.castHyperlinksToStrArray(added));
+				//Then we check if they're ILiknedWorkItemStruc, because, again,
+				// Polarion treats those 'struct' objects differently thank regular
+				// IPObjects
+			} else if (Utils.isCollectionLinkedWorkItemStructList(added)) {
+				fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrArray(added));
+			} else if (Utils.isCollectionApprovalStructList(added)) { 
+				fieldChange.setElementsAdded(Utils.castApprovalsToStrArray(added));
+			} else {
+				try {
+					fieldChange.setElementsAdded(Utils.castCollectionToStrArray((List<IPObject>)added));	
+				} catch(ClassCastException ex) {
+					// TODO: log
+					fieldChange.setElementsAdded(new String[] {""});
+				}
+			}			
+			workItemChange.addFieldChange(fieldChange);
+		}
+		if (removed != null && removed.size() > 0) {
+			WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null,
+					null, null);
+			if (Utils.isCollectionHyperlinkStructList(removed)) {
+				fieldChange.setElementsRemoved(Utils.castHyperlinksToStrArray(removed));
+			} else if (Utils.isCollectionLinkedWorkItemStructList(removed)) {
+				fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrArray(removed));
+			} else if (Utils.isCollectionApprovalStructList(removed)) { 
+				fieldChange.setElementsRemoved(Utils.castApprovalsToStrArray(removed));
+			} else {
+				try {
+					fieldChange.setElementsRemoved(Utils.castCollectionToStrArray((List<IPObject>)removed));
+				} catch (ClassCastException ex) {
+					//TODO: log
+					fieldChange.setElementsRemoved(new String[] {""});
+				}
+			}
+			workItemChange.addFieldChange(fieldChange);
+		}
 	}
 
 	private boolean validateParameters(ITrackerService trackerService, String projectId, String space, String doc) {

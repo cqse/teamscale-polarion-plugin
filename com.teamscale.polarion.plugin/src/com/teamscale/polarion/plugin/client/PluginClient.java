@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
-import java.net.CookieStore;
 import java.net.HttpCookie;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -20,8 +19,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.validation.constraints.NotNull;
-
-import org.apache.http.impl.client.BasicCookieStore;
 
 /**
  * This client class was created for debugging purposes only.

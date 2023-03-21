@@ -27,6 +27,14 @@ public class WorkItemForJson {
 	private String updated; //date-time format
 	private HashMap<String, Object> customFields;
 	private String[] assignees;
+	private String[] attachments;
+	private String author;
+	private String[] categories;
+	private String[] comments;
+	private String[] linkedWorkItems; //All links (in and out links)
+	private String moduleId;
+	private String projectId;
+	private String[] watchers;
 	
 	private Collection<WorkItemChange> workItemChanges;
 	
@@ -208,6 +216,70 @@ public class WorkItemForJson {
 
 	public void setAssignees(String[] assignees) {
 		this.assignees = assignees;
+	}
+
+	public String[] getAttachments() {
+		return attachments;
+	}
+
+	public void setAttachments(String[] attachments) {
+		this.attachments = attachments;
+	}
+
+	public String getAuthor() {
+		return author;
+	}
+
+	public void setAuthor(String author) {
+		this.author = author;
+	}
+
+	public String[] getCategories() {
+		return categories;
+	}
+
+	public void setCategories(String[] categories) {
+		this.categories = categories;
+	}
+
+	public String[] getComments() {
+		return comments;
+	}
+
+	public void setComments(String[] comments) {
+		this.comments = comments;
+	}
+
+	public String[] getLinkedWorkItems() {
+		return linkedWorkItems;
+	}
+
+	public void setLinkedWorkItems(String[] linkedWorkItems) {
+		this.linkedWorkItems = linkedWorkItems;
+	}
+
+	public String getModuleId() {
+		return moduleId;
+	}
+
+	public void setModuleId(String moduleId) {
+		this.moduleId = moduleId;
+	}
+
+	public String getProjectId() {
+		return projectId;
+	}
+
+	public void setProjectId(String projectId) {
+		this.projectId = projectId;
+	}
+
+	public String[] getWatchers() {
+		return watchers;
+	}
+
+	public void setWatchers(String[] watchers) {
+		this.watchers = watchers;
 	}
 
 	public Collection<WorkItemChange> getWorkItemChanges() {
