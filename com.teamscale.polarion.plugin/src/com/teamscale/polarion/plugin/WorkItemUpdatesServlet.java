@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -51,21 +53,21 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		String projId = (String) req.getAttribute("project");
 		String spaceId = (String) req.getAttribute("space");
 		String docId = (String) req.getAttribute("document");
+		String lastUpdateRev = req.getParameter("lastUpdate"); //base revision # for the request
 		
 		//Check if the request params are valid IDs before putting them into a SQL query
 		if (validateParameters(trackerService, projId, spaceId, docId)) {
-
-			ArrayList<WorkItemForJson> allChanges = retrieveChanges(trackerService, projId, spaceId, docId);
-
-			Gson gson = new Gson();
-			System.out.println(gson.toJson(allChanges));
-			String jsonResult = gson.toJson(allChanges);
-			res.setContentType("application/json");
-			PrintWriter out = res.getWriter();        
-			out.print(jsonResult);
+			ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
+			if (!validateLastUpdateString(lastUpdateRev)) {
+				//Rather than raising an exception and sending an error response,
+				// here we assume all the changes should be returned.
+				lastUpdateRev = "0";
+			}
+			changes = retrieveChanges(trackerService, projId, spaceId, docId, lastUpdateRev);
+			sendResponse(changes, res);
 		} else {
 			res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
-		}
+		}			
 	}
 
 	/* (non-Javadoc)
@@ -76,43 +78,57 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		doGet(req, resp);
 	}  
 	
-	private ArrayList<WorkItemForJson> retrieveChanges(ITrackerService trackerService, String projId, String spaceId, String docId) {
+	private static void sendResponse(ArrayList<WorkItemForJson> result, HttpServletResponse resp) throws ServletException, IOException{
+		Gson gson = new Gson();
+		//TODO: remove or log?
+		System.out.println(gson.toJson(result));
+		String jsonResult = gson.toJson(result);
+		resp.setContentType("application/json");
+		PrintWriter out = resp.getWriter();        
+		out.print(jsonResult);		
+	}
+	
+	private String buildSqlQuery(String projId, String spaceId, String docId, String lastUpdate) {
+	
+		StringBuilder sqlQuery = new StringBuilder("select * from WORKITEM WI ");
+				sqlQuery.append("inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI ");
+				sqlQuery.append("inner join MODULE M on WI.FK_URI_MODULE = M.C_URI ");
+				sqlQuery.append("where P.C_ID = '" + projId + "'");
+				sqlQuery.append(" AND M.C_ID = '" + docId + "'");
+				sqlQuery.append(" AND M.C_MODULEFOLDER = '" + spaceId + "'");
+				sqlQuery.append(" AND WI.C_REV > " + lastUpdate);
+
+		return sqlQuery.toString();	
+	}
+	
+	private static boolean validateLastUpdateString(String lastUpdate) {
+		if (lastUpdate != null) {
+			Pattern pattern = Pattern.compile("\\d+");
+			Matcher matcher = pattern.matcher(lastUpdate);
+			return matcher.matches();
+		}
+		return false;
+	}
+	
+	private ArrayList<WorkItemForJson> retrieveChanges(ITrackerService trackerService, String projId, String spaceId, String docId,  String lastUpdate) {
 		
-		String sqlQuery = "select * from WORKITEM WI "
-				+ "inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI "
-				+ "inner join MODULE M on WI.FK_URI_MODULE = M.C_URI "
-				+ "where P.C_ID = '" + projId + "'"
-				+ " AND M.C_ID = '" + docId + "'"
-				+ " AND M.C_MODULEFOLDER = '" + spaceId + "'";
-		//        		+ " AND WI.C_REV = 6";
-		//				+ "AND M.C_LOCATION = 'elibrary/Testing/MySubSpace' "; //Doesn't work           
-		//				+ "AND M.C_MODULELOCATION = 'MySubSpace/MyDummyDoc'"; //Doesn't work
-		
-		ArrayList<WorkItemForJson> allChanges = new ArrayList<WorkItemForJson>();
+		String sqlQuery = buildSqlQuery(projId, spaceId, docId, lastUpdate);
+		ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
 
 		IDataService dataService = trackerService.getDataService();
 		IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 		for (IWorkItem workItem : workItems) {
-			System.out.println("WI id: " + workItem.getId() + " title: "+workItem.getTitle());
-			// System.out.println(workItem.getLastRevision()); //"Returns the last revision in the History of this object. (Does not return revisions from included child objects like Work Items or Document Workflow Signatures.)"
-			// System.out.println(workItem.getDataRevision()); //"Returns revision from which the data was actually read."
-			// IModule module = trackerService.getModuleManager().getContainingModule(workItem);
-			// System.out.println(" => Module Title or Name: "+ workItem.getModule().getTitleOrName()
-			//		+ " ID: " + workItem.getModule().getId()
-			//		+ " location: " + workItem.getModule().getModuleLocation()
-			//		+ " folder: " + workItem.getModule().getFolder().getTitleOrName());
-
-			WorkItemForJson workItemForJson = processHistory(workItem, dataService);			
-			allChanges.add(workItemForJson);
+			WorkItemForJson workItemForJson = processHistory(workItem, dataService, lastUpdate);			
+			changes.add(workItemForJson);
 
 		}
 		//TODO: debugging only
 		System.out.println("Total: "+workItems.size()); 
 		
-		return allChanges;
+		return changes;
 	}
 	
-	private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
+	private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService, String lastUpdate) {
 		WorkItemForJson workItemForJson = Utils.castWorkItem(workItem);
 		IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
 		if (workItemHistory != null) {
@@ -121,7 +137,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 				workItemForJson.setRevision(workItemHistory.get(0).getRevision());
 			} else if (workItemHistory.size() > 1) {
 				IDiffManager diffManager = dataService.getDiffManager();
-				Collection<WorkItemChange> workItemChanges = collectWorkItemChanges(workItemHistory, diffManager);
+				Collection<WorkItemChange> workItemChanges = collectWorkItemChanges(workItemHistory, diffManager, lastUpdate);
 				workItemForJson.setWorkItemChanges(workItemChanges);	
 				/**
 				 * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest (last)."
@@ -140,17 +156,18 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		return workItemForJson;
 	}
 	
-	private Collection<WorkItemChange> collectWorkItemChanges(IPObjectList<IWorkItem> workItemHistory, IDiffManager diffManager) {
+	private Collection<WorkItemChange> collectWorkItemChanges(IPObjectList<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate) {
 		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
 		int index = 0;
 		int next = 1;
 		while (next < workItemHistory.size()) {
-			//TODO: ignore fields?
-			//TODO: group by revision
-			IFieldDiff[] fieldDiffs = diffManager.generateDiff(workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
-			WorkItemChange fieldChangesToAdd = collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
-			if (fieldChangesToAdd != null) {
-				workItemChanges.add(fieldChangesToAdd);
+			if (Long.valueOf(workItemHistory.get(next).getRevision()) > Long.valueOf(lastUpdate)) {
+				//TODO: ignore fields?
+				IFieldDiff[] fieldDiffs = diffManager.generateDiff(workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
+				WorkItemChange fieldChangesToAdd = collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
+				if (fieldChangesToAdd != null) {
+					workItemChanges.add(fieldChangesToAdd);
+				}				
 			}
 			index++;
 			next++;
