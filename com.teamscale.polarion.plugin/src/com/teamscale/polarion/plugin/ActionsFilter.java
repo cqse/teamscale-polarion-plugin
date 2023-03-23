@@ -18,37 +18,20 @@ public class ActionsFilter extends DoAsFilter implements Filter {
 	
 	public void init(FilterConfig fConfig) throws ServletException {
 		this.context = fConfig.getServletContext();
-		this.context.log("RequestLoggingFilter initialized");
+		this.context.log("[Teamscale Polarion Plugin] RequestLoggingFilter initialized");
 	}
 	
 	@Override
 	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
 			throws IOException, ServletException {
 		
-		//This is something to try. Snippet found at the Polarion community forum
-//		ISecurityService securityService = (ISecurityService) PlatformContext.getPlatform().lookupService(ISecurityService.class);
-//		IPassword credentials = Password.of("admin", "admin");
-//		try {
-//			Subject userSubject = securityService.login().from("default").authenticator(Password.id("polarion_login_form")).with(credentials).perform();
-////			securityService.doAsUser(userSubject, new PrivilegedAction<Object>() {
-////		        
-////				@SuppressWarnings("unchecked")
-////		        public Object run() {
-////		          return TransactionExecuter.execute(RunnableWEx.wrap(ActionsFilterServlet.this));
-////		        }
-////		      });
-//		} catch (AuthenticationFailedException e) {
-//			// TODO Auto-generated catch block
-//			this.context.log("Failed to login.");
-//			e.printStackTrace();
-//		}
-		
 		if (req instanceof HttpServletRequest) {
 			HttpServletRequest servletReq = (HttpServletRequest) req;
 			if (validatePath(servletReq.getServletPath())) {
-				//TODO: Remove sysouts
-				System.out.println( ((HttpServletRequest) req).getServletPath());
-				System.out.println( ((HttpServletRequest) req).getContextPath());
+				this.context.log("[Teamscale Polarion Plugin] Request received. Servlet context: "
+						+ ((HttpServletRequest) req).getContextPath());
+				this.context.log("[Teamscale Polarion Plugin] Servlet path: "
+						+ ((HttpServletRequest) req).getServletPath());
 				setRequestPathParameters(servletReq);
 				chain.doFilter(req, res);
 			} else { 
@@ -70,6 +53,9 @@ public class ActionsFilter extends DoAsFilter implements Filter {
 		req.setAttribute("document", pathParts[3]);
 		// The fourth part should be the action name which is fixed
 		// and already validated at this point
+		this.context.log("[Teamscale Polarion Plugin] Path parameters: "
+				+ "project: " + pathParts[1] + " space: " + pathParts[2]
+						+ " doc: " + pathParts[3]);
 	}
 	
 	/** Five parts are expected for example:

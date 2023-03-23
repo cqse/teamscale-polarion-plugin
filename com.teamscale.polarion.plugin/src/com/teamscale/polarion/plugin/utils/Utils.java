@@ -1,8 +1,13 @@
 package com.teamscale.polarion.plugin.utils;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.polarion.alm.projects.model.IUser;
 import com.polarion.alm.tracker.model.IApprovalStruct;
 import com.polarion.alm.tracker.model.IAttachment;
@@ -19,7 +24,9 @@ import com.teamscale.polarion.plugin.model.WorkItemForJson;
 
 public class Utils {
 	
-	public static WorkItemForJson castWorkItem(IWorkItem workItem) {
+	public static WorkItemForJson castWorkItem(IWorkItem workItem, 
+			String[] includeCustomFields, String[] includeLinkRoles) {
+		
 		WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId());
 		if (workItem.getRevision() != null)
 			workItemForJson.setRevision(workItem.getRevision());
@@ -65,8 +72,10 @@ public class Utils {
 			workItemForJson.setAuthor(workItem.getAuthor().getId());
 		if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty())
 			workItemForJson.setWatchers(castCollectionToStrArray(workItem.getWatchingUsers()));
-		if (workItem.getCustomFieldsList() != null && !workItem.getCustomFieldsList().isEmpty())
-			workItemForJson.setCustomFields(castCustomFields(workItem));
+		if (includeCustomFields !=null && includeCustomFields.length > 0 
+				&& workItem.getCustomFieldsList() != null 
+				&& !workItem.getCustomFieldsList().isEmpty())
+			workItemForJson.setCustomFields(castCustomFields(workItem, includeCustomFields));
 		if (workItem.getAssignees() != null && !workItem.getAssignees().isEmpty())
 			workItemForJson.setAssignees(castCollectionToStrArray(workItem.getAssignees()));
 		if (workItem.getAttachments() != null && !workItem.getAttachments().isEmpty())
@@ -80,12 +89,34 @@ public class Utils {
 					.stream()
 					.map( comment -> comment.getId())
 					.toArray( size -> new String[size]));
-		if (workItem.getLinkedWorkItems() != null && !workItem.getLinkedWorkItems().isEmpty())
-			//This gets all links (in and out links)
-			workItemForJson.setLinkedWorkItems(workItem.getLinkedWorkItems()
+		if (includeLinkRoles != null && includeLinkRoles.length > 0 
+				&& workItem.getLinkedWorkItems() != null 
+				&& !workItem.getLinkedWorkItems().isEmpty()) {
+			//Getting all links (in and out links)	
+			Set<String> linksBackIdsSet = workItem.getLinkedWorkItemsStructsBack()
 					.stream()
-					.map( linkedItem -> linkedItem.getId())
-					.toArray( size -> new String[size]));	
+					.filter(linkStruct -> 
+						Arrays.asList(includeLinkRoles).
+							contains(linkStruct.getLinkRole().getId()))
+					.map(linkStruct -> linkStruct.getLinkedItem().getId())
+					.collect(Collectors.toSet());
+			
+			Set<String> linksDirectIdsSet = workItem.getLinkedWorkItemsStructsDirect()
+					.stream()
+					.filter(linkStruct -> 
+						Arrays.asList(includeLinkRoles).
+							contains(linkStruct.getLinkRole().getId()))			
+					.map(linkStruct -> linkStruct.getLinkedItem().getId())
+					.collect(Collectors.toSet());
+			
+			if (!linksDirectIdsSet.isEmpty() || !linksBackIdsSet.isEmpty()) {
+				linksDirectIdsSet.addAll(linksBackIdsSet);
+				workItemForJson.setLinkedWorkItems(
+						linksDirectIdsSet.toArray(
+								new String[linksDirectIdsSet.size()]));				
+			}
+		}
+		
 		return workItemForJson;
 	}
 	
@@ -179,18 +210,25 @@ public class Utils {
 	    return false;
 	}	
 
-//	private static String[] castAssignees(IWorkItem workItem) {
-//		List<IUser> assignees = workItem.getAssignees();
-//		return assignees.stream().map( assignee -> assignee.getId()).toArray( size -> new String[size]);
-//	}
-
-	private static HashMap<String, Object> castCustomFields(IWorkItem workItem) {
-		Collection<String> customFieldsList = workItem.getCustomFieldsList();
-		HashMap<String, Object> converted = new HashMap<String, Object>(customFieldsList.size());
+	private static HashMap<String, Object> castCustomFields(IWorkItem workItem, 
+			String[] includeCustomFields) {
+//		Collection<String> customFieldsList = workItem.getCustomFieldsList();
+		Set<String> customFields = new HashSet<>(workItem.getCustomFieldsList());
+		Set<String> targetSet = new HashSet<>(Arrays.asList(includeCustomFields));
 		
-		customFieldsList.forEach( fieldName -> {
+		
+//		customFieldsList.forEach( fieldName -> {
+//			if (includeCustomFields)
+//			converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
+//		});
+		
+		targetSet.retainAll(customFields);
+		
+		HashMap<String, Object> converted = new HashMap<String, Object>(targetSet.size());
+		targetSet.forEach( fieldName -> {
 			converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
 		});
+		
 		return converted;
 	}
 	

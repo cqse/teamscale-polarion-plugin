@@ -8,12 +8,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
@@ -55,15 +53,30 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		String docId = (String) req.getAttribute("document");
 		String lastUpdateRev = req.getParameter("lastUpdate"); //base revision # for the request
 		
-		//Check if the request params are valid IDs before putting them into a SQL query
+		// Example of how the following arrays should be passed in the URL
+		 //includedWorkItemTypes=testcase&includedWorkItemTypes=requirement
+		 //That's how the Java servlet API gets String arrays in the URL
+		String[] workItemTypes = req.getParameterValues("includedWorkItemTypes"); 
+		
+		// List of work item custom fields that should be included in the result. 
+		//If empty, no custom fields should be present.
+		String[] includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
+		
+		//List of possible work item link roles that should be included in the result. 
+		  //If empty, no work item links should be included.
+		String[] includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
+		
+		//To prevent SQL injection issues
+		 //Check if the request params are valid IDs before putting them into the SQL query
 		if (validateParameters(trackerService, projId, spaceId, docId)) {
 			ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
 			if (!validateLastUpdateString(lastUpdateRev)) {
 				//Rather than raising an exception and sending an error response,
-				// here we assume all the changes should be returned.
+				//here we assume all the changes should be returned if lastUpdateRev is absent.
 				lastUpdateRev = "0";
 			}
-			changes = retrieveChanges(trackerService, projId, spaceId, docId, lastUpdateRev);
+			changes = retrieveChanges(trackerService, projId, spaceId, docId, lastUpdateRev, 
+					workItemTypes, includeCustomFields, includeLinkRoles);
 			sendResponse(changes, res);
 		} else {
 			res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
@@ -80,25 +93,43 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 	
 	private static void sendResponse(ArrayList<WorkItemForJson> result, HttpServletResponse resp) throws ServletException, IOException{
 		Gson gson = new Gson();
-		//TODO: remove or log?
-		System.out.println(gson.toJson(result));
 		String jsonResult = gson.toJson(result);
 		resp.setContentType("application/json");
 		PrintWriter out = resp.getWriter();        
 		out.print(jsonResult);		
 	}
 	
-	private String buildSqlQuery(String projId, String spaceId, String docId, String lastUpdate) {
+	private static String buildSqlQuery(String projId, String spaceId, String docId, 
+			String lastUpdate, String[] workItemTypes) {
 	
 		StringBuilder sqlQuery = new StringBuilder("select * from WORKITEM WI ");
 				sqlQuery.append("inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI ");
 				sqlQuery.append("inner join MODULE M on WI.FK_URI_MODULE = M.C_URI ");
 				sqlQuery.append("where P.C_ID = '" + projId + "'");
-				sqlQuery.append(" AND M.C_ID = '" + docId + "'");
-				sqlQuery.append(" AND M.C_MODULEFOLDER = '" + spaceId + "'");
-				sqlQuery.append(" AND WI.C_REV > " + lastUpdate);
+				sqlQuery.append(" and M.C_ID = '" + docId + "'");
+				sqlQuery.append(" and M.C_MODULEFOLDER = '" + spaceId + "'");
+				sqlQuery.append(" and WI.C_REV > " + lastUpdate);
+				sqlQuery.append(getWorkItemTypesAndClause(workItemTypes));
 
 		return sqlQuery.toString();	
+	}
+	
+	/** If empty, work items of all types should be included. **/
+	private static String getWorkItemTypesAndClause(String[] workItemTypes) {
+		StringBuilder andClause = new StringBuilder("");
+		if (workItemTypes != null && workItemTypes.length > 0) {
+			andClause.append(" and WI.C_TYPE in (");
+			for (int i = 0; i < workItemTypes.length; i++) {
+				 if (workItemTypes[i] != null && !workItemTypes[i].isBlank()) {
+					 andClause.append("'" + workItemTypes[i] + "',");
+				 }
+			}
+			if (andClause.toString().endsWith(",")) {
+				andClause.deleteCharAt(andClause.length()-1);
+			}
+			andClause.append(")");
+		}
+		return andClause.toString();
 	}
 	
 	private static boolean validateLastUpdateString(String lastUpdate) {
@@ -110,26 +141,30 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 		return false;
 	}
 	
-	private ArrayList<WorkItemForJson> retrieveChanges(ITrackerService trackerService, String projId, String spaceId, String docId,  String lastUpdate) {
+	private ArrayList<WorkItemForJson> retrieveChanges(ITrackerService trackerService, 
+			String projId, String spaceId, String docId,  String lastUpdate, 
+			String[] workItemTypes, String[] includeCustomFields, String[] includeLinkRoles) {
 		
-		String sqlQuery = buildSqlQuery(projId, spaceId, docId, lastUpdate);
+		String sqlQuery = buildSqlQuery(projId, spaceId, docId, lastUpdate, workItemTypes);
 		ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
 
 		IDataService dataService = trackerService.getDataService();
 		IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 		for (IWorkItem workItem : workItems) {
-			WorkItemForJson workItemForJson = processHistory(workItem, dataService, lastUpdate);			
+			WorkItemForJson workItemForJson = processHistory(workItem, dataService, 
+					lastUpdate, includeCustomFields, includeLinkRoles);			
 			changes.add(workItemForJson);
 
 		}
-		//TODO: debugging only
-		System.out.println("Total: "+workItems.size()); 
+//		//TODO: debugging only
+//		System.out.println("Total: "+workItems.size()); 
 		
 		return changes;
 	}
 	
-	private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService, String lastUpdate) {
-		WorkItemForJson workItemForJson = Utils.castWorkItem(workItem);
+	private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService, 
+			String lastUpdate, String[] includeCustomFields, String[] includeLinkRoles) {
+		WorkItemForJson workItemForJson = Utils.castWorkItem(workItem, includeCustomFields, includeLinkRoles);
 		IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
 		if (workItemHistory != null) {
 			if (workItemHistory.size() == 1 && workItemHistory.get(0) != null ) {
