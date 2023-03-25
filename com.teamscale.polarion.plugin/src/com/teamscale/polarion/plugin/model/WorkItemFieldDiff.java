@@ -1,67 +1,69 @@
 package com.teamscale.polarion.plugin.model;
 
 public class WorkItemFieldDiff {
-	
-	private String fieldName;
-	/** 
-	 * We either use fieldValueBefore/After 
-	 *  or we use elementsAdded/Removed.
-	 *  This is due to the way Polarion treats categorical values vs. 
-	 *  	other values (e.g., string, numbers, dates).
-	 *  https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/diff/IFieldDiff.html
-	 **/
-	private String fieldValueBefore;
-	private String fieldValueAfter; 
-	private String[] elementsAdded;
-	private String[] elementsRemoved;
-	
-	
-	public WorkItemFieldDiff(String fieldName, String fieldValueBefore, String fieldValueAfter,
-			String[] elementsAdded, String[] elementsRemoved) {
-		this.fieldName = fieldName;
-		this.fieldValueBefore = fieldValueBefore;
-		this.fieldValueAfter = fieldValueAfter;
-		this.elementsAdded = elementsAdded;
-		this.elementsRemoved = elementsRemoved;
-	}
 
-	public String getFieldName() {
-		return fieldName;
-	}
+  private String fieldName;
+  /**
+   * We either use fieldValueBefore/After or we use elementsAdded/Removed. This is due to the way
+   * Polarion treats categorical values vs. other values (e.g., string, numbers, dates).
+   * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/diff/IFieldDiff.html
+   */
+  private String fieldValueBefore;
 
-	public void setFieldName(String fieldName) {
-		this.fieldName = fieldName;
-	}
+  private String fieldValueAfter;
+  private String[] elementsAdded;
+  private String[] elementsRemoved;
 
-	public String getFieldValueBefore() {
-		return fieldValueBefore;
-	}
+  public WorkItemFieldDiff(
+      String fieldName,
+      String fieldValueBefore,
+      String fieldValueAfter,
+      String[] elementsAdded,
+      String[] elementsRemoved) {
+    this.fieldName = fieldName;
+    this.fieldValueBefore = fieldValueBefore;
+    this.fieldValueAfter = fieldValueAfter;
+    this.elementsAdded = elementsAdded;
+    this.elementsRemoved = elementsRemoved;
+  }
 
-	public void setFieldValueBefore(String fieldValueBefore) {
-		this.fieldValueBefore = fieldValueBefore;
-	}
+  public String getFieldName() {
+    return fieldName;
+  }
 
-	public String getFieldValueAfter() {
-		return fieldValueAfter;
-	}
+  public void setFieldName(String fieldName) {
+    this.fieldName = fieldName;
+  }
 
-	public void setFieldValueAfter(String fieldValueAfter) {
-		this.fieldValueAfter = fieldValueAfter;
-	}
+  public String getFieldValueBefore() {
+    return fieldValueBefore;
+  }
 
-	public String[] getElementsAdded() {
-		return elementsAdded;
-	}
+  public void setFieldValueBefore(String fieldValueBefore) {
+    this.fieldValueBefore = fieldValueBefore;
+  }
 
-	public void setElementsAdded(String[] elementsAdded) {
-		this.elementsAdded = elementsAdded;
-	}
+  public String getFieldValueAfter() {
+    return fieldValueAfter;
+  }
 
-	public String[] getElementsRemoved() {
-		return elementsRemoved;
-	}
+  public void setFieldValueAfter(String fieldValueAfter) {
+    this.fieldValueAfter = fieldValueAfter;
+  }
 
-	public void setElementsRemoved(String[] elementsRemoved) {
-		this.elementsRemoved = elementsRemoved;
-	}
+  public String[] getElementsAdded() {
+    return elementsAdded;
+  }
+
+  public void setElementsAdded(String[] elementsAdded) {
+    this.elementsAdded = elementsAdded;
+  }
+
+  public String[] getElementsRemoved() {
+    return elementsRemoved;
+  }
+
+  public void setElementsRemoved(String[] elementsRemoved) {
+    this.elementsRemoved = elementsRemoved;
+  }
 }
