@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashMap;
 
 import com.teamscale.polarion.plugin.utils.Utils;
+import com.teamscale.polarion.plugin.utils.Utils.UpdateType;
 
 public class WorkItemForJson {
 
@@ -46,10 +47,10 @@ public class WorkItemForJson {
   }
   
   public WorkItemForJson(String id, Utils.UpdateType updateType, String revision) {
-      this.id = id;
-      this.updateType = updateType;
-      this.revision = revision;
-    }
+  		this.id = id;
+  		this.updateType = updateType;
+  		this.revision = revision;
+  }
 
   public String getId() {
     return id;

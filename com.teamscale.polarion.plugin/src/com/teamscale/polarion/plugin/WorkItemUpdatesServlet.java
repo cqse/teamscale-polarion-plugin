@@ -202,6 +202,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
     WorkItemForJson workItemForJson;
     for (IWorkItem workItem : workItems) {
+    		// This is because WIs moved to the trash can are still in the Polarion WI table we query
     	if (wasMovedToRecycleBin(workItem)) {
     			workItemForJson = buildDeletedWorkItemForJson(workItem);
     	} else {
@@ -210,7 +211,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     	}
       changes.add(workItemForJson);
     }
-    changes.addAll(buildDeletedList(lastUpdate));
+    // changes.addAll(buildDeletedList(lastUpdate));
     return changes;
   }
   
@@ -232,28 +233,28 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   //TODO: Need to debug why the compareRevisions throws an exception
   //Question: Could TS do the diff since it's supposed to have the objects
   // before until last update?
-  private List<WorkItemForJson> buildDeletedList(String lastUpdate) {
-  		List<WorkItemForJson> deletedList = new ArrayList<WorkItemForJson>();
-  		try {
-  				if (module == null)
-  						return deletedList;
-					// From Polarion doc: pass null for HEAD/current
-					IBaselineDiff baselineDiff = module.compareRevisions(lastUpdate, module.getLastRevision());
-					ITypeInfo typeInfo = baselineDiff.getWorkItemDiff();
-					// The list of objects deleted between the baselines, the objects are taken from 
-					// the beginning revision.
-					for (Object item: typeInfo.getDeletedObjects()) {
-							if (item instanceof IWorkItem) {
-									deletedList.add(buildDeletedWorkItemForJson((IWorkItem)item));
-							}
-					}
-					return deletedList;
-			} catch (UnresolvableObjectException unresolvable) {
-					// if module did not exist in one of given revisions
-					unresolvable.printStackTrace();
-					return deletedList;
-			} 				
-  }
+//  private List<WorkItemForJson> buildDeletedList(String lastUpdate) {
+//  		List<WorkItemForJson> deletedList = new ArrayList<WorkItemForJson>();
+//  		try {
+//  				if (module == null)
+//  						return deletedList;
+//					// From Polarion doc: pass null for HEAD/current
+//					IBaselineDiff baselineDiff = module.compareRevisions(lastUpdate, module.getLastRevision());
+//					ITypeInfo typeInfo = baselineDiff.getWorkItemDiff();
+//					// The list of objects deleted between the baselines, the objects are taken from 
+//					// the beginning revision.
+//					for (Object item: typeInfo.getDeletedObjects()) {
+//							if (item instanceof IWorkItem) {
+//									deletedList.add(buildDeletedWorkItemForJson((IWorkItem)item));
+//							}
+//					}
+//					return deletedList;
+//			} catch (UnresolvableObjectException unresolvable) {
+//					// if module did not exist in one of given revisions
+//					unresolvable.printStackTrace();
+//					return deletedList;
+//			} 				
+//  }
 
   private WorkItemForJson processHistory(
       IWorkItem workItem,
