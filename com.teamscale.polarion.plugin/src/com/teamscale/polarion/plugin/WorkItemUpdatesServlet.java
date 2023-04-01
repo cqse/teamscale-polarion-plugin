@@ -3,13 +3,12 @@ package com.teamscale.polarion.plugin;
 import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
-import com.polarion.alm.tracker.model.IBaselineDiff;
 import com.polarion.alm.tracker.model.IModule;
-import com.polarion.alm.tracker.model.ITypeInfo;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IDataService;
 import com.polarion.platform.persistence.UnresolvableObjectException;
+import com.polarion.platform.persistence.diff.IChange;
 import com.polarion.platform.persistence.diff.IDiffManager;
 import com.polarion.platform.persistence.diff.IFieldDiff;
 import com.polarion.platform.persistence.model.IPObject;
@@ -49,6 +48,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   
   private IModule module;
   
+  private String version;
+  
   /* (non-Javadoc)
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
    * javax.servlet.http.HttpServletResponse)
@@ -76,7 +77,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     // List of possible work item link roles that should be included in the result.
     // If empty, no work item links should be included.
     String[] includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
-
+    
+    // For experimentation. TODO: Remove the following flag
+    version = (String)req.getAttribute("version") != null ? (String)req.getAttribute("version") : "v1";
+    
     this.getServletContext().log("[Teamscale Polarion Plugin] Query strings: ");
     this.getServletContext().log("[Teamscale Polarion Plugin] lastUpdate: " + lastUpdateRev);
     this.getServletContext()
@@ -201,6 +205,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     IDataService dataService = trackerService.getDataService();
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
     WorkItemForJson workItemForJson;
+    
+    long startTime = System.currentTimeMillis();
+    
     for (IWorkItem workItem : workItems) {
     		// This is because WIs moved to the trash can are still in the Polarion WI table we query
     	if (wasMovedToRecycleBin(workItem)) {
@@ -212,6 +219,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       changes.add(workItemForJson);
     }
     // changes.addAll(buildDeletedList(lastUpdate));
+    long endTime = System.currentTimeMillis();
+    System.out.println(version+" Took " + (endTime - startTime) + " milliseconds");
     return changes;
   }
   
@@ -264,22 +273,43 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       String[] includeLinkRoles) {
     WorkItemForJson workItemForJson =
         Utils.castWorkItem(workItem, includeCustomFields, includeLinkRoles);
+    
+    // For experimentation. TODO: Remove this if section that checks for v2
+    if (version !=null && version.equals("v2")) {  		
+    		IDiffManager diffManager = dataService.getDiffManager();
+    		//No fields to ignore, no fields ordering, and does not include empty field diffs
+    		IChange[] changes = diffManager.generateHistory(workItem, new HashSet<String>(), new String[0], false);
+    		if (changes != null && changes.length > 0) {
+            Collection<WorkItemChange> workItemChanges =
+                    collectWorkItemChanges(changes, lastUpdate);
+                workItemForJson.setWorkItemChanges(workItemChanges);
+            
+                // ORDERED??
+            workItemForJson.setRevision(changes[changes.length - 1].getRevision());
+    		} else {
+    				// no history
+    		}
+    		return workItemForJson;
+    }
+    
     IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
     if (workItemHistory != null) {
       if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
         // No changes in history when size == 1 (the WI remains as created)
         workItemForJson.setRevision(workItemHistory.get(0).getRevision());
       } else if (workItemHistory.size() > 1) {
+      		/**
+      		 * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
+      		 * (last)."
+      		 * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
+      		 * Then, we get the last one from the history as the current revision
+      		 */
+      	List<IWorkItem> reducedWorkItemHistory = cutDownWorkItemHistory(workItemHistory, lastUpdate);
         IDiffManager diffManager = dataService.getDiffManager();
         Collection<WorkItemChange> workItemChanges =
-            collectWorkItemChanges(workItemHistory, diffManager, lastUpdate);
+            collectWorkItemChanges(reducedWorkItemHistory, diffManager, lastUpdate);
         workItemForJson.setWorkItemChanges(workItemChanges);
-        /**
-         * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
-         * (last)."
-         * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
-         * Then, we get the last one from the history as the current revision
-         */
+
         workItemForJson.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
       } else {
         /**
@@ -293,7 +323,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   private Collection<WorkItemChange> collectWorkItemChanges(
-      IPObjectList<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate) {
+      List<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate) {
     Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
     int index = 0;
     int next = 1;
@@ -313,9 +343,30 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
     return workItemChanges;
   }
+  
+  private Collection<WorkItemChange> collectWorkItemChanges(
+  				IChange[] changes, String lastUpdate) {
+  		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
+
+  		for (int index = 0; index < changes.length; index++) {
+  				if (Long.valueOf(changes[index].getRevision()) > Long.valueOf(lastUpdate)) {
+  						IFieldDiff[] fieldDiffs = changes[index].getDiffs();
+  						WorkItemChange fieldChangesToAdd =
+  										collectFieldChanges(fieldDiffs, changes[index].getRevision());
+  						if (fieldChangesToAdd != null) {
+  								workItemChanges.add(fieldChangesToAdd);
+  						}  						
+  				}
+  		}
+
+  		return workItemChanges;
+  } 
 
   private WorkItemChange collectFieldChanges(IFieldDiff[] fieldDiffs, String revision) {
     WorkItemChange workItemChange = new WorkItemChange(revision);
+    
+    if (fieldDiffs == null) return null;
+    
     for (IFieldDiff fieldDiff : fieldDiffs) {
       if (fieldDiff.isCollection()) {
         collectFieldDiffAsCollection(workItemChange, fieldDiff);
@@ -383,6 +434,35 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       }
       workItemChange.addFieldChange(fieldChange);
     }
+  }
+  
+  /** Binary search to cut down the search space since the list is ordered **/
+  private List<IWorkItem> cutDownWorkItemHistory(IPObjectList<IWorkItem> workItemHistory, 
+  				String lastUpdate) {
+  		
+  		List<IWorkItem> reducedList = new ArrayList<IWorkItem>();
+  		
+      int left = 0;
+      int right = workItemHistory.size() - 1;
+      int index = -1;  		
+      
+      // find the index of the first WI with revision >= lastUpdate
+      while (left <= right) {
+          int mid = (left + right) / 2;
+          if (Long.valueOf(workItemHistory.get(mid).getRevision()) < Long.valueOf(lastUpdate)) {
+              left = mid + 1;
+          } else {
+              index = mid;
+              right = mid - 1;
+          }
+      }
+      
+      for (int i = index; i < workItemHistory.size(); i++) {
+      		if (Long.valueOf(workItemHistory.get(index).getRevision()) < Long.valueOf(lastUpdate)) {
+      				reducedList.add(workItemHistory.get(index));
+          }
+      }  
+      return reducedList;
   }
 
   private boolean validateParameters(String projectId, String space, String doc) {

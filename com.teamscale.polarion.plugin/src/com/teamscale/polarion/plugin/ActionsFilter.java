@@ -36,12 +36,26 @@ public class ActionsFilter extends DoAsFilter implements Filter {
                 + ((HttpServletRequest) req).getServletPath());
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
-      } else {
+        // TODO: Following Else/if for experimenting. Remove!
+      } else if (servletReq.getServletPath().startsWith("/v2") && 
+      				servletReq.getServletPath().endsWith("work-item-updates") && 
+      				servletReq.getServletPath().split("/").length == 6) {
+      		
+          String[] pathParts = servletReq.getServletPath().split("/");
+
+          req.setAttribute("project", pathParts[2]);
+          req.setAttribute("space", pathParts[3]);
+          req.setAttribute("document", pathParts[4]);
+      		servletReq.setAttribute("version", "v2");
+      		chain.doFilter(req, res);
+      }
+      else {
         ((HttpServletResponse) res)
             .sendError(
                 HttpServletResponse.SC_NOT_FOUND, "The requested resource or action is not found");
       }
-    } else {
+    } 
+    else {
       throw new ServletException("This service supports only HTTP requests.");
     }
   }
