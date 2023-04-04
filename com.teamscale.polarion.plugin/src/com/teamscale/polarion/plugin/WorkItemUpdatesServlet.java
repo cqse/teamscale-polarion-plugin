@@ -5,6 +5,8 @@ import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
+import com.polarion.core.util.logging.ILogger;
+import com.polarion.core.util.logging.Logger;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IDataService;
 import com.polarion.platform.persistence.UnresolvableObjectException;
@@ -42,6 +44,8 @@ import javax.servlet.http.HttpServletResponse;
 public class WorkItemUpdatesServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
+  
+  private static final ILogger logger = Logger.getLogger(WorkItemUpdatesServlet.class);
   
   private ITrackerService trackerService =
           (ITrackerService) PlatformContext.getPlatform().lookupService(ITrackerService.class);
@@ -81,15 +85,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     // For experimentation. TODO: Remove the following flag
     version = (String)req.getAttribute("version") != null ? (String)req.getAttribute("version") : "v1";
     
-    this.getServletContext().log("[Teamscale Polarion Plugin] Query strings: ");
-    this.getServletContext().log("[Teamscale Polarion Plugin] lastUpdate: " + lastUpdateRev);
-    this.getServletContext()
-        .log("[Teamscale Polarion Plugin] includedWorkItemTypes: " + workItemTypes);
-    this.getServletContext()
-        .log("[Teamscale Polarion Plugin] includedWorkItemCustomFields: " + includeCustomFields);
-    this.getServletContext()
-        .log("[Teamscale Polarion Plugin] includedWorkItemLinkRoles: " + includeLinkRoles);
-
     try {
       // To prevent SQL injection issues
       // Check if the request params are valid IDs before putting them into the SQL query
@@ -110,22 +105,19 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                 includeCustomFields,
                 includeLinkRoles);
         sendResponse(changes, res);
-        this.getServletContext().log("[Teamscale Polarion Plugin] Successful response sent");
+        logger.info("[Teamscale Polarion Plugin] Successful response sent");
       } else {
-        this.getServletContext()
-            .log("[Teamscale Polarion Plugin] Invalid conbination of projectId/folderId/documentId");
+        logger.info("[Teamscale Polarion Plugin] Invalid conbination of projectId/folderId/documentId");
         res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
       }
     } catch (PermissionDeniedException permissionDenied) {
-    		this.getServletContext()
-        .log("[Teamscale Polarion Plugin] Permission denied raised by Polarion");
-    		this.getServletContext().log(permissionDenied.getMessage());
+    		logger.error("[Teamscale Polarion Plugin] Permission denied raised by Polarion",
+    						permissionDenied);
     		res.sendError(HttpServletResponse.SC_FORBIDDEN);
     }
     catch (AccessDeniedException accessDenied) {
-    		this.getServletContext()
-        .log("[Teamscale Polarion Plugin] Access denied raised by Polarion");  		
-    		this.getServletContext().log(accessDenied.getMessage());
+    		logger.error("[Teamscale Polarion Plugin] Access denied raised by Polarion", 
+    						accessDenied);  		
     		res.sendError(HttpServletResponse.SC_FORBIDDEN);
     }
   }
@@ -203,10 +195,17 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
 
     IDataService dataService = trackerService.getDataService();
+    
+    long timeBefore = System.currentTimeMillis();
+    
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
+    
+    long timeAfter = System.currentTimeMillis();
+    logger.info("[Teamscale Polarion Plugin] Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
+    
     WorkItemForJson workItemForJson;
     
-    long startTime = System.currentTimeMillis();
+    timeBefore = System.currentTimeMillis();
     
     for (IWorkItem workItem : workItems) {
     		// This is because WIs moved to the trash can are still in the Polarion WI table we query
@@ -218,9 +217,13 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     	}
       changes.add(workItemForJson);
     }
-    // changes.addAll(buildDeletedList(lastUpdate));
-    long endTime = System.currentTimeMillis();
-    System.out.println(version+" Took " + (endTime - startTime) + " milliseconds");
+    
+    timeAfter = System.currentTimeMillis();
+    logger.info("[Teamscale Polarion Plugin] Finished processing request results. "
+        + "Execution time (ms): " + (timeAfter - timeBefore));
+   
+    System.out.println(version+" took " + (timeAfter - timeBefore) + " milliseconds");
+    
     return changes;
   }
   
@@ -238,32 +241,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		return new WorkItemForJson(workItem.getId(), 
 							Utils.UpdateType.DELETED, workItem.getLastRevision());
   }
-  
-  //TODO: Need to debug why the compareRevisions throws an exception
-  //Question: Could TS do the diff since it's supposed to have the objects
-  // before until last update?
-//  private List<WorkItemForJson> buildDeletedList(String lastUpdate) {
-//  		List<WorkItemForJson> deletedList = new ArrayList<WorkItemForJson>();
-//  		try {
-//  				if (module == null)
-//  						return deletedList;
-//					// From Polarion doc: pass null for HEAD/current
-//					IBaselineDiff baselineDiff = module.compareRevisions(lastUpdate, module.getLastRevision());
-//					ITypeInfo typeInfo = baselineDiff.getWorkItemDiff();
-//					// The list of objects deleted between the baselines, the objects are taken from 
-//					// the beginning revision.
-//					for (Object item: typeInfo.getDeletedObjects()) {
-//							if (item instanceof IWorkItem) {
-//									deletedList.add(buildDeletedWorkItemForJson((IWorkItem)item));
-//							}
-//					}
-//					return deletedList;
-//			} catch (UnresolvableObjectException unresolvable) {
-//					// if module did not exist in one of given revisions
-//					unresolvable.printStackTrace();
-//					return deletedList;
-//			} 				
-//  }
 
   private WorkItemForJson processHistory(
       IWorkItem workItem,
@@ -477,29 +454,23 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     try {
       IProject projObj = trackerService.getProjectsService().getProject(projectId);
 
-      this.getServletContext()
-          .log("[Teamscale Polarion Plugin] Attempting to read projectID: " + projObj.getId());
-      this.getServletContext()
-          .log("[Teamscale Polarion Plugin] Project name: " + projObj.getName());
+      logger.info("[Teamscale Polarion Plugin] Attempting to read projectID: " + projObj.getId());
 
       return true;
 
     } catch (UnresolvableObjectException exception) {
-      this.getServletContext()
-          .log("[Teamscale Polarion Plugin] Not possible to resolve project with id: " + projectId);
+      logger.error("[Teamscale Polarion Plugin] Not possible to resolve project with id: " + 
+      				projectId, exception);
       return false;
     }
   }
 
   private boolean validateSpaceId(String projId, String spaceId) {
-    this.getServletContext().log("Attempting to read folder: " + spaceId);
     if (trackerService.getFolderManager().existFolder(projId, spaceId)) {
-      this.getServletContext()
-          .log("[Teamscale Polarion Plugin] Attempting to read folder: " + spaceId);
+      logger.info("[Teamscale Polarion Plugin] Attempting to read folder: " + spaceId);
       return true;
     }
-    this.getServletContext()
-        .log("[Teamscale Polarion Plugin] Not possible to find folder with id: " + spaceId);
+    logger.info("[Teamscale Polarion Plugin] Not possible to find folder with id: " + spaceId);
     return false;
   }
 
@@ -522,13 +493,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     for (IModule module : modules) {
       if (module.getId().equals(docId)) {
       	this.module = module;
-        this.getServletContext()
-            .log("[Teamscale Polarion Plugin] Attempting to read document: " + docId);
+        logger.info("[Teamscale Polarion Plugin] Attempting to read document: " + docId);
         return true;
       }
     }
-    this.getServletContext()
-        .log("[Teamscale Polarion Plugin] Not possible to find document with id: " + docId);
+    logger.info("[Teamscale Polarion Plugin] Not possible to find document with id: " + docId);
     return false;
   }
 }

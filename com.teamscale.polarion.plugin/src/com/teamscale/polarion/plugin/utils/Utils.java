@@ -272,25 +272,6 @@ public class Utils {
     }
   }
 
-  //	private static Object convertTestStepValues(ITestSteps testSteps) {
-  //		HashMap<String[], String[]> convertedSteps = new HashMap<String[],
-  // String[]>(testSteps.getKeys().size());
-  //		//TODO: Is it possible to have test steps without keys? Or at least a single test step value
-  // without key?
-  //		for (int index = 0; index < testSteps.getKeys().size(); index++) {
-  //			String key = testSteps.getKeys().get(index).getName();
-  //			if (testSteps.getSteps() != null && testSteps.getSteps().size() > 0) {
-  //				List<Text> textList = testSteps.getSteps().get(index).getValues();
-  //				String[] values = (String[])textList.stream().map(textElem ->
-  // textElem.getContent()).toArray(size -> new String[size]);
-  //				convertedSteps.put(key, values);
-  //			} else {
-  //				convertedSteps.put(key, new String[]{""});
-  //			}
-  //		}
-  //		return convertedSteps;
-  //	}
-
   public static String[] castCollectionToStrArray(List<IPObject> collection) {
     return collection.stream()
         .map(

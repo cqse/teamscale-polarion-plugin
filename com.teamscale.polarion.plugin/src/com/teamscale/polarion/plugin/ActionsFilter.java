@@ -1,5 +1,7 @@
 package com.teamscale.polarion.plugin;
 
+import com.polarion.core.util.logging.ILogger;
+import com.polarion.core.util.logging.Logger;
 import com.polarion.portal.tomcat.servlets.DoAsFilter;
 import java.io.IOException;
 import javax.servlet.Filter;
@@ -14,11 +16,9 @@ import javax.servlet.http.HttpServletResponse;
 
 public class ActionsFilter extends DoAsFilter implements Filter {
 
-  private ServletContext context;
+  private static final ILogger logger = Logger.getLogger(ActionsFilter.class);
 
   public void init(FilterConfig fConfig) throws ServletException {
-    this.context = fConfig.getServletContext();
-    this.context.log("[Teamscale Polarion Plugin] RequestLoggingFilter initialized");
   }
 
   @Override
@@ -28,12 +28,6 @@ public class ActionsFilter extends DoAsFilter implements Filter {
     if (req instanceof HttpServletRequest) {
       HttpServletRequest servletReq = (HttpServletRequest) req;
       if (validatePath(servletReq.getServletPath())) {
-        this.context.log(
-            "[Teamscale Polarion Plugin] Request received. Servlet context: "
-                + ((HttpServletRequest) req).getContextPath());
-        this.context.log(
-            "[Teamscale Polarion Plugin] Servlet path: "
-                + ((HttpServletRequest) req).getServletPath());
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
         // TODO: Following Else/if for experimenting. Remove!
@@ -50,12 +44,14 @@ public class ActionsFilter extends DoAsFilter implements Filter {
       		chain.doFilter(req, res);
       }
       else {
+      	logger.info("[Teamscale Polarion Plugin] 404, Resource not found to be sent.");
         ((HttpServletResponse) res)
             .sendError(
                 HttpServletResponse.SC_NOT_FOUND, "The requested resource or action is not found");
       }
     } 
     else {
+    	logger.info("[Teamscale Polarion Plugin] This service supports only HTTP requests.");
       throw new ServletException("This service supports only HTTP requests.");
     }
   }
@@ -71,14 +67,6 @@ public class ActionsFilter extends DoAsFilter implements Filter {
     req.setAttribute("document", pathParts[3]);
     // The fourth part should be the action name which is fixed
     // and already validated at this point
-    this.context.log(
-        "[Teamscale Polarion Plugin] Path parameters: "
-            + "project: "
-            + pathParts[1]
-            + " space: "
-            + pathParts[2]
-            + " doc: "
-            + pathParts[3]);
   }
 
   /**
