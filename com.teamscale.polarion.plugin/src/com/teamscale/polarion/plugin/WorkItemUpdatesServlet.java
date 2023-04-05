@@ -281,10 +281,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       		 * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
       		 * Then, we get the last one from the history as the current revision
       		 */
-      	List<IWorkItem> reducedWorkItemHistory = cutDownWorkItemHistory(workItemHistory, lastUpdate);
+      	int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory, lastUpdate);
         IDiffManager diffManager = dataService.getDiffManager();
         Collection<WorkItemChange> workItemChanges =
-            collectWorkItemChanges(reducedWorkItemHistory, diffManager, lastUpdate);
+            collectWorkItemChanges(workItemHistory, diffManager, lastUpdate, lastUpdateIndex);
         workItemForJson.setWorkItemChanges(workItemChanges);
 
         workItemForJson.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
@@ -297,6 +297,32 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       }
     }
     return workItemForJson;
+  }
+  
+  private Collection<WorkItemChange> collectWorkItemChanges(
+  				List<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate, int lastUpdateIndex) {
+  		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
+  		
+  		// Short circuit: no changes to look for
+  		if (lastUpdateIndex < 0) return workItemChanges;
+
+  		int index = lastUpdateIndex;
+  		int next = index + 1;
+  		while (next < workItemHistory.size()) {
+  				if (Long.valueOf(workItemHistory.get(next).getRevision()) > Long.valueOf(lastUpdate)) {
+  						IFieldDiff[] fieldDiffs =
+  										diffManager.generateDiff(
+  														workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
+  						WorkItemChange fieldChangesToAdd =
+  										collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
+  						if (fieldChangesToAdd != null) {
+  								workItemChanges.add(fieldChangesToAdd);
+  						}
+  				}
+  				index++;
+  				next++;
+  		}
+  		return workItemChanges;
   }
 
   private Collection<WorkItemChange> collectWorkItemChanges(
@@ -413,33 +439,39 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
   }
   
-  /** Binary search to cut down the search space since the list is ordered **/
-  private List<IWorkItem> cutDownWorkItemHistory(IPObjectList<IWorkItem> workItemHistory, 
+  /** Binary search to cut down the search space since the list is ordered in ascending order**/
+  private int searchIndexWorkItemHistory(IPObjectList<IWorkItem> workItemHistory, 
   				String lastUpdate) {
+  		// Short circuit: don't need to binarysearch if you're looking for all history
+  		if (Long.valueOf(lastUpdate) <= 0) return 0;
   		
-  		List<IWorkItem> reducedList = new ArrayList<IWorkItem>();
+  	  // Short circuit: don't need to search if lastUpdate already points to the last history item
+  		if (Long.valueOf(workItemHistory.get(workItemHistory.size() - 1)
+  						.getRevision()) == Long.valueOf(lastUpdate)) 
+  						return workItemHistory.size() - 1;
+  		
+  	  // Short circuit: don't need to search if all the changes are before lastUpdate
+  		if (Long.valueOf(workItemHistory.get(workItemHistory.size() - 1)
+  						.getRevision()) == Long.valueOf(lastUpdate)) 
+  						return -1;  
   		
       int left = 0;
       int right = workItemHistory.size() - 1;
       int index = -1;  		
       
-      // find the index of the first WI with revision >= lastUpdate
+      //binary search the 'lastUpdate index'
       while (left <= right) {
           int mid = (left + right) / 2;
           if (Long.valueOf(workItemHistory.get(mid).getRevision()) < Long.valueOf(lastUpdate)) {
               left = mid + 1;
+          } else if (Long.valueOf(workItemHistory.get(mid).getRevision()) == Long.valueOf(lastUpdate)){
+              return mid;
           } else {
-              index = mid;
-              right = mid - 1;
+          		return mid - 1;
           }
       }
-      
-      for (int i = index; i < workItemHistory.size(); i++) {
-      		if (Long.valueOf(workItemHistory.get(index).getRevision()) < Long.valueOf(lastUpdate)) {
-      				reducedList.add(workItemHistory.get(index));
-          }
-      }  
-      return reducedList;
+  
+      return index;
   }
 
   private boolean validateParameters(String projectId, String space, String doc) {
