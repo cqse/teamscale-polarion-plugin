@@ -6,6 +6,10 @@ import java.util.HashMap;
 import com.teamscale.polarion.plugin.utils.Utils;
 import com.teamscale.polarion.plugin.utils.Utils.UpdateType;
 
+/**
+ * This class represents the final WorkItem object to be serialized to json
+ * which then goes in the response body (as json).
+ * */
 public class WorkItemForJson {
 
   private String id;

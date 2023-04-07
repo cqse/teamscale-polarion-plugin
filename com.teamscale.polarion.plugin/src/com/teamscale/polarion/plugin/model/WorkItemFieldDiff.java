@@ -1,5 +1,10 @@
 package com.teamscale.polarion.plugin.model;
 
+/** 
+ * This class represents a WorkItem diff for a particular field.
+ * The diff is generate by Polarion, while here we encapsulate what we need
+ * for Teamscale.
+ * */
 public class WorkItemFieldDiff {
 
   private String fieldName;
@@ -14,17 +19,8 @@ public class WorkItemFieldDiff {
   private String[] elementsAdded;
   private String[] elementsRemoved;
 
-  public WorkItemFieldDiff(
-      String fieldName,
-      String fieldValueBefore,
-      String fieldValueAfter,
-      String[] elementsAdded,
-      String[] elementsRemoved) {
-    this.fieldName = fieldName;
-    this.fieldValueBefore = fieldValueBefore;
-    this.fieldValueAfter = fieldValueAfter;
-    this.elementsAdded = elementsAdded;
-    this.elementsRemoved = elementsRemoved;
+  public WorkItemFieldDiff(String fieldName) {
+  	this.fieldName = fieldName;
   }
 
   public String getFieldName() {

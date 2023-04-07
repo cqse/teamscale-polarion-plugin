@@ -7,11 +7,11 @@ package com.teamscale.polarion.plugin.model;
  * */
 public class LinkedWorkItem {
 		private String id;
-		private String linkRole;
+		private String linkRoleId;
 		
-		public LinkedWorkItem(String id, String linkRole) {
+		public LinkedWorkItem(String id, String linkRoleId) {
 				this.id = id;
-				this.linkRole = linkRole;
+				this.linkRoleId = linkRoleId;
 		}
 		
 		public String getId() {
@@ -22,12 +22,12 @@ public class LinkedWorkItem {
 				this.id = id;
 		}
 		
-		public String getLinkRole() {
-				return linkRole;
+		public String getLinkRoleId() {
+				return linkRoleId;
 		}
 		
-		public void setLinkRole(String linkRole) {
-				this.linkRole = linkRole;
+		public void setLinkRole(String linkRoleId) {
+				this.linkRoleId = linkRoleId;
 		}
 
 		public boolean equals(Object linkedWorkItem) {

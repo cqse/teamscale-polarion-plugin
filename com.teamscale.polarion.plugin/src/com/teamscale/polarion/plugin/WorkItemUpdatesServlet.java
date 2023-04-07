@@ -3,6 +3,7 @@ package com.teamscale.polarion.plugin;
 import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
+import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.logging.ILogger;
@@ -17,6 +18,7 @@ import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.PermissionDeniedException;
 import com.polarion.platform.service.repository.AccessDeniedException;
+import com.teamscale.polarion.plugin.model.LinkFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
@@ -24,6 +26,7 @@ import com.teamscale.polarion.plugin.utils.Utils;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -54,6 +57,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   
   private String version;
   
+  // List of possible work item link roles that should be included in the result.
+  // If empty, no work item links should be included.
+  private String[] includeLinkRoles;
+  
   /* (non-Javadoc)
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
    * javax.servlet.http.HttpServletResponse)
@@ -78,9 +85,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     // If empty, no custom fields should be present.
     String[] includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
 
-    // List of possible work item link roles that should be included in the result.
-    // If empty, no work item links should be included.
-    String[] includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
+    includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
     
     // For experimentation. TODO: Remove the following flag
     version = (String)req.getAttribute("version") != null ? (String)req.getAttribute("version") : "v1";
@@ -102,8 +107,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                 docId,
                 lastUpdateRev,
                 workItemTypes,
-                includeCustomFields,
-                includeLinkRoles);
+                includeCustomFields);
         sendResponse(changes, res);
         logger.info("[Teamscale Polarion Plugin] Successful response sent");
       } else {
@@ -188,8 +192,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       String docId,
       String lastUpdate,
       String[] workItemTypes,
-      String[] includeCustomFields,
-      String[] includeLinkRoles) {
+      String[] includeCustomFields) {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId, lastUpdate, workItemTypes);
     ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
@@ -213,7 +216,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     			workItemForJson = buildDeletedWorkItemForJson(workItem);
     	} else {
     			workItemForJson =
-    		          processHistory(workItem, dataService, lastUpdate, includeCustomFields, includeLinkRoles);
+    		          processHistory(workItem, dataService, lastUpdate, includeCustomFields);
     	}
       changes.add(workItemForJson);
     }
@@ -246,8 +249,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       IWorkItem workItem,
       IDataService dataService,
       String lastUpdate,
-      String[] includeCustomFields,
-      String[] includeLinkRoles) {
+      String[] includeCustomFields) {
     WorkItemForJson workItemForJson =
         Utils.castWorkItem(workItem, includeCustomFields, includeLinkRoles);
     
@@ -325,27 +327,27 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		return workItemChanges;
   }
 
-  private Collection<WorkItemChange> collectWorkItemChanges(
-      List<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate) {
-    Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
-    int index = 0;
-    int next = 1;
-    while (next < workItemHistory.size()) {
-      if (Long.valueOf(workItemHistory.get(next).getRevision()) > Long.valueOf(lastUpdate)) {
-        IFieldDiff[] fieldDiffs =
-            diffManager.generateDiff(
-                workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
-        WorkItemChange fieldChangesToAdd =
-            collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
-        if (fieldChangesToAdd != null) {
-          workItemChanges.add(fieldChangesToAdd);
-        }
-      }
-      index++;
-      next++;
-    }
-    return workItemChanges;
-  }
+//  private Collection<WorkItemChange> collectWorkItemChanges(
+//      List<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate) {
+//    Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
+//    int index = 0;
+//    int next = 1;
+//    while (next < workItemHistory.size()) {
+//      if (Long.valueOf(workItemHistory.get(next).getRevision()) > Long.valueOf(lastUpdate)) {
+//        IFieldDiff[] fieldDiffs =
+//            diffManager.generateDiff(
+//                workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
+//        WorkItemChange fieldChangesToAdd =
+//            collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
+//        if (fieldChangesToAdd != null) {
+//          workItemChanges.add(fieldChangesToAdd);
+//        }
+//      }
+//      index++;
+//      next++;
+//    }
+//    return workItemChanges;
+//  }
   
   private Collection<WorkItemChange> collectWorkItemChanges(
   				IChange[] changes, String lastUpdate) {
@@ -375,7 +377,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         collectFieldDiffAsCollection(workItemChange, fieldDiff);
       } else {
         WorkItemFieldDiff fieldChange =
-            new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null, null, null);
+            new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setFieldValueBefore(Utils.castFieldValueToString(fieldDiff.getBefore()));
         fieldChange.setFieldValueAfter(Utils.castFieldValueToString(fieldDiff.getAfter()));
         workItemChange.addFieldChange(fieldChange);
@@ -389,20 +391,29 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
     if (added != null && added.size() > 0) {
-      WorkItemFieldDiff fieldChange =
-          new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null, null, null);
+      WorkItemFieldDiff fieldChange = null;
       // We check if the collection is hyperlink list first since they're not
       // convertible into IPObjectList. So, we treat them separately.
       if (Utils.isCollectionHyperlinkStructList(added)) {
+      	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsAdded(Utils.castHyperlinksToStrArray(added));
         // Then we check if they're ILiknedWorkItemStruc, because, again,
         // Polarion treats those 'struct' objects differently thank regular
         // IPObjects
       } else if (Utils.isCollectionLinkedWorkItemStructList(added)) {
-        fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrArray(added));
+      	// If the collection is a list of LinkedWorkItemStruct, we also treat them specifically
+      	String linkRoleId = ((ILinkedWorkItemStruct)added.iterator().next()).getLinkRole().getId();
+      	if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)) {
+      			fieldChange	= new LinkFieldDiff(fieldDiff.getFieldName(), 
+      								((ILinkedWorkItemStruct)added.iterator().next()).getLinkRole().getId());
+      			fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrArray(added));	
+      	}
       } else if (Utils.isCollectionApprovalStructList(added)) {
+      	// If the collection is a list of ApprovalStruct, we also treat them specifically
+      	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsAdded(Utils.castApprovalsToStrArray(added));
       } else {
+      	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
           fieldChange.setElementsAdded(Utils.castCollectionToStrArray((List<IPObject>) added));
         } catch (ClassCastException ex) {
@@ -413,18 +424,27 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           fieldChange.setElementsAdded(new String[] {""});
         }
       }
-      workItemChange.addFieldChange(fieldChange);
+      if (fieldChange != null) {
+      		workItemChange.addFieldChange(fieldChange);
+      }
     }
     if (removed != null && removed.size() > 0) {
-      WorkItemFieldDiff fieldChange =
-          new WorkItemFieldDiff(fieldDiff.getFieldName(), null, null, null, null);
+      WorkItemFieldDiff fieldChange = null;
       if (Utils.isCollectionHyperlinkStructList(removed)) {
+      	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsRemoved(Utils.castHyperlinksToStrArray(removed));
       } else if (Utils.isCollectionLinkedWorkItemStructList(removed)) {
-        fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrArray(removed));
+      		String linkRoleId = ((ILinkedWorkItemStruct)removed.iterator().next()).getLinkRole().getId();
+        	if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)) {
+        			fieldChange	= new LinkFieldDiff(fieldDiff.getFieldName(), 
+        								((ILinkedWorkItemStruct)removed.iterator().next()).getLinkRole().getId());
+        			fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrArray(removed));	
+        	}
       } else if (Utils.isCollectionApprovalStructList(removed)) {
+      	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsRemoved(Utils.castApprovalsToStrArray(removed));
       } else {
+      	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
           fieldChange.setElementsRemoved(Utils.castCollectionToStrArray((List<IPObject>) removed));
         } catch (ClassCastException ex) {
@@ -435,7 +455,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           fieldChange.setElementsRemoved(new String[] {""});
         }
       }
-      workItemChange.addFieldChange(fieldChange);
+      if (fieldChange != null) {
+      		workItemChange.addFieldChange(fieldChange);
+      }
     }
   }
   
