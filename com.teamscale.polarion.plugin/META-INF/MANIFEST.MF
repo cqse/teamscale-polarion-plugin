@@ -8,5 +8,5 @@ Require-Bundle: com.polarion.portal.tomcat;bundle-version="9.0.53",
  com.polarion.alm.tracker;bundle-version="3.22.2"
 Bundle-Vendor: CQSE
 Automatic-Module-Name: com.teamscale.polarion.plugin
-Bundle-ClassPath: teamscale-polarion-plugin.jar
+Bundle-ClassPath: teamscale-polarion-plugin-v1.jar
 Bundle-RequiredExecutionEnvironment: JavaSE-11

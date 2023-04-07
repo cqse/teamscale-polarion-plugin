@@ -452,7 +452,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		
   	  // Short circuit: don't need to search if all the changes are before lastUpdate
   		if (Long.valueOf(workItemHistory.get(workItemHistory.size() - 1)
-  						.getRevision()) == Long.valueOf(lastUpdate)) 
+  						.getRevision()) < Long.valueOf(lastUpdate)) 
   						return -1;  
   		
       int left = 0;
@@ -467,11 +467,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           } else if (Long.valueOf(workItemHistory.get(mid).getRevision()) == Long.valueOf(lastUpdate)){
               return mid;
           } else {
-          		return mid - 1;
+          		index = mid;
+          		right = mid -1;
           }
       }
   
-      return index;
+      return (index == 0 ? index : index - 1);
   }
 
   private boolean validateParameters(String projectId, String space, String doc) {
