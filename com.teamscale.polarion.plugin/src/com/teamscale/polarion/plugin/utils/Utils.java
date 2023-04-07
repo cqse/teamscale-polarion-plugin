@@ -12,6 +12,7 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.types.duration.DurationTime;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
+import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import java.util.Arrays;
 import java.util.Collection;
@@ -93,26 +94,31 @@ public class Utils {
         && workItem.getLinkedWorkItems() != null
         && !workItem.getLinkedWorkItems().isEmpty()) {
       // Getting all links (in and out links)
-      Set<String> linksBackIdsSet =
+      Set<LinkedWorkItem> linksBackSet =
           workItem.getLinkedWorkItemsStructsBack().stream()
               .filter(
                   linkStruct ->
                       Arrays.asList(includeLinkRoles).contains(linkStruct.getLinkRole().getId()))
-              .map(linkStruct -> linkStruct.getLinkedItem().getId())
+              .map(linkStruct -> new LinkedWorkItem(
+              				linkStruct.getLinkedItem().getId(), 
+              				linkStruct.getLinkRole().getId()))
               .collect(Collectors.toSet());
 
-      Set<String> linksDirectIdsSet =
+      Set<LinkedWorkItem> linksDirectSet =
           workItem.getLinkedWorkItemsStructsDirect().stream()
               .filter(
                   linkStruct ->
                       Arrays.asList(includeLinkRoles).contains(linkStruct.getLinkRole().getId()))
-              .map(linkStruct -> linkStruct.getLinkedItem().getId())
+              .map(linkStruct -> new LinkedWorkItem(
+              				linkStruct.getLinkedItem().getId(), 
+              				linkStruct.getLinkRole().getId()))
               .collect(Collectors.toSet());
 
-      if (!linksDirectIdsSet.isEmpty() || !linksBackIdsSet.isEmpty()) {
-        linksDirectIdsSet.addAll(linksBackIdsSet);
+      if (!linksDirectSet.isEmpty() || !linksBackSet.isEmpty()) {
+      		// Set Union on the remaining links after filtering out undesired link roles
+        linksDirectSet.addAll(linksBackSet);
         workItemForJson.setLinkedWorkItems(
-            linksDirectIdsSet.toArray(new String[linksDirectIdsSet.size()]));
+                linksDirectSet.toArray(new LinkedWorkItem[linksDirectSet.size()]));
       }
     }
 

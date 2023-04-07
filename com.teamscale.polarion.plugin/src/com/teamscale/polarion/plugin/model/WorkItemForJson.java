@@ -35,7 +35,7 @@ public class WorkItemForJson {
   private String author;
   private String[] categories;
   private String[] comments;
-  private String[] linkedWorkItems; // All links (in and out links)
+  private LinkedWorkItem[] linkedWorkItems; // All links (in and out links)
   private String moduleId;
   private String projectId;
   private String[] watchers;
@@ -268,11 +268,11 @@ public class WorkItemForJson {
     this.comments = comments;
   }
 
-  public String[] getLinkedWorkItems() {
+  public LinkedWorkItem[] getLinkedWorkItems() {
     return linkedWorkItems;
   }
 
-  public void setLinkedWorkItems(String[] linkedWorkItems) {
+  public void setLinkedWorkItems(LinkedWorkItem[] linkedWorkItems) {
     this.linkedWorkItems = linkedWorkItems;
   }
 
