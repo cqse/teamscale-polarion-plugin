@@ -1,7 +1,9 @@
 package com.teamscale.polarion.plugin.model;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 
 import com.teamscale.polarion.plugin.utils.Utils;
 import com.teamscale.polarion.plugin.utils.Utils.UpdateType;
@@ -18,7 +20,7 @@ public class WorkItemForJson {
   private String description;
   private String created; // date-time format, ex: '1970-01-01T00:00:00Z'
   private String dueDate; // date-time format
-  private String[] hyperLinks;
+  private List<String> hyperLinks;
   private String initialEstimate;
   private String outlineNumber;
   private String plannedEnd; // date-time format
@@ -34,15 +36,15 @@ public class WorkItemForJson {
   private String type;
   private String updated; // date-time format
   private HashMap<String, Object> customFields;
-  private String[] assignees;
-  private String[] attachments;
+  private List<String> assignees;
+  private List<String> attachments;
   private String author;
-  private String[] categories;
+  private List<String> categories;
   private String[] comments;
   private LinkedWorkItem[] linkedWorkItems; // All links (in and out links)
   private String moduleId;
   private String projectId;
-  private String[] watchers;
+  private List<String> watchers;
 
   private Collection<WorkItemChange> workItemChanges;
 
@@ -104,11 +106,11 @@ public class WorkItemForJson {
     this.dueDate = dueDate;
   }
 
-  public String[] getHyperLinks() {
-    return this.hyperLinks;
+  public List<String> getHyperLinks() {
+    return hyperLinks;
   }
 
-  public void setHyperLinks(String[] hyperLinks) {
+  public void setHyperLinks(List<String> hyperLinks) {
     this.hyperLinks = hyperLinks;
   }
 
@@ -232,19 +234,19 @@ public class WorkItemForJson {
     this.customFields = customFields;
   }
 
-  public String[] getAssignees() {
+  public List<String> getAssignees() {
     return assignees;
   }
 
-  public void setAssignees(String[] assignees) {
+  public void setAssignees(List<String> assignees) {
     this.assignees = assignees;
   }
 
-  public String[] getAttachments() {
+  public List<String> getAttachments() {
     return attachments;
   }
 
-  public void setAttachments(String[] attachments) {
+  public void setAttachments(List<String> attachments) {
     this.attachments = attachments;
   }
 
@@ -256,11 +258,11 @@ public class WorkItemForJson {
     this.author = author;
   }
 
-  public String[] getCategories() {
+  public List<String> getCategories() {
     return categories;
   }
 
-  public void setCategories(String[] categories) {
+  public void setCategories(List<String> categories) {
     this.categories = categories;
   }
 
@@ -296,11 +298,11 @@ public class WorkItemForJson {
     this.projectId = projectId;
   }
 
-  public String[] getWatchers() {
+  public List<String> getWatchers() {
     return watchers;
   }
 
-  public void setWatchers(String[] watchers) {
+  public void setWatchers(List<String> watchers) {
     this.watchers = watchers;
   }
 
@@ -310,5 +312,12 @@ public class WorkItemForJson {
 
   public void setWorkItemChanges(Collection<WorkItemChange> workItemChanges) {
     this.workItemChanges = workItemChanges;
+  }
+  
+  public void addWorkItemChange(WorkItemChange workItemChange) {
+  	if (workItemChanges == null) {
+  			workItemChanges = new ArrayList<WorkItemChange>();
+  	}	
+  	workItemChanges.add(workItemChange);
   }
 }

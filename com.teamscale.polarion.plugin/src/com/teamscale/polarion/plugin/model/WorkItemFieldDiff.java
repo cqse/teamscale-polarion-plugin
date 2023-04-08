@@ -1,5 +1,8 @@
 package com.teamscale.polarion.plugin.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** 
  * This class represents a WorkItem diff for a particular field.
  * The diff is generate by Polarion, while here we encapsulate what we need
@@ -16,8 +19,8 @@ public class WorkItemFieldDiff {
   private String fieldValueBefore;
 
   private String fieldValueAfter;
-  private String[] elementsAdded;
-  private String[] elementsRemoved;
+  private List<String> elementsAdded;
+  private List<String> elementsRemoved;
 
   public WorkItemFieldDiff(String fieldName) {
   	this.fieldName = fieldName;
@@ -47,19 +50,32 @@ public class WorkItemFieldDiff {
     this.fieldValueAfter = fieldValueAfter;
   }
 
-  public String[] getElementsAdded() {
+  public List<String> getElementsAdded() {
     return elementsAdded;
   }
 
-  public void setElementsAdded(String[] elementsAdded) {
+  public void setElementsAdded(List<String> elementsAdded) {
     this.elementsAdded = elementsAdded;
   }
 
-  public String[] getElementsRemoved() {
+  public List<String> getElementsRemoved() {
     return elementsRemoved;
   }
 
-  public void setElementsRemoved(String[] elementsRemoved) {
+  public void setElementsRemoved(List<String> elementsRemoved) {
     this.elementsRemoved = elementsRemoved;
   }
+  
+  public void addElementAdded(String elementAdded) {
+  		if (elementsAdded == null)
+  				elementsAdded = new ArrayList<String>();
+  		elementsAdded.add(elementAdded);
+  }
+  
+  public void addElementRemoved(String elementRemoved) {
+  		if (elementsRemoved == null)
+  				elementsRemoved = new ArrayList<String>(); 		
+  		elementsRemoved.add(elementRemoved);
+  }
+  
 }

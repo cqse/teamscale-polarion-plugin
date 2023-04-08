@@ -18,7 +18,9 @@ import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.PermissionDeniedException;
 import com.polarion.platform.service.repository.AccessDeniedException;
+import com.teamscale.polarion.plugin.model.LinkBundle;
 import com.teamscale.polarion.plugin.model.LinkFieldDiff;
+import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
@@ -28,8 +30,10 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.servlet.ServletException;
@@ -57,9 +61,19 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   
   private String version;
   
-  // List of possible work item link roles that should be included in the result.
-  // If empty, no work item links should be included.
+  // If empty, no work item links should be included. We expect role IDs (not role names)
   private String[] includeLinkRoles;
+  
+  // This is to generate changes in the json result related to backward links, since
+  // Polarion doesn't return a diff/change associated with the opposite end of the link
+  // when a link changes (added/removed). 
+  // The key of this map is the workItemId to receive the change
+  private Map<String, List<LinkBundle>> backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
+  
+  // This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
+  // This provides O(1) access when, at the end, we need to go back and feed them with
+  // the work items opposite link changes.
+  private Map<String, WorkItemForJson> allItemsToSend = new HashMap<String, WorkItemForJson>();
   
   /* (non-Javadoc)
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
@@ -100,15 +114,14 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           // here we assume all the changes should be returned if lastUpdateRev is absent.
           lastUpdateRev = "0";
         }
-        changes =
-            retrieveChanges(
+        retrieveChanges(
                 projId,
                 spaceId,
                 docId,
                 lastUpdateRev,
                 workItemTypes,
                 includeCustomFields);
-        sendResponse(changes, res);
+        sendResponse(res);
         logger.info("[Teamscale Polarion Plugin] Successful response sent");
       } else {
         logger.info("[Teamscale Polarion Plugin] Invalid conbination of projectId/folderId/documentId");
@@ -135,10 +148,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     doGet(req, resp);
   }
 
-  private static void sendResponse(ArrayList<WorkItemForJson> result, HttpServletResponse resp)
+  private void sendResponse(HttpServletResponse resp)
       throws ServletException, IOException {
     Gson gson = new Gson();
-    String jsonResult = gson.toJson(result);
+    String jsonResult = gson.toJson(allItemsToSend.values());
     resp.setContentType("application/json");
     PrintWriter out = resp.getWriter();
     out.print(jsonResult);
@@ -186,7 +199,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return false;
   }
 
-  private ArrayList<WorkItemForJson> retrieveChanges(
+  private void retrieveChanges(
       String projId,
       String spaceId,
       String docId,
@@ -195,7 +208,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       String[] includeCustomFields) {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId, lastUpdate, workItemTypes);
-    ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
+//    ArrayList<WorkItemForJson> allItems = new ArrayList<WorkItemForJson>();
 
     IDataService dataService = trackerService.getDataService();
     
@@ -206,20 +219,45 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     long timeAfter = System.currentTimeMillis();
     logger.info("[Teamscale Polarion Plugin] Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
     
-    WorkItemForJson workItemForJson;
-    
     timeBefore = System.currentTimeMillis();
     
     for (IWorkItem workItem : workItems) {
-    		// This is because WIs moved to the trash can are still in the Polarion WI table we query
+    	WorkItemForJson workItemForJson;
+    	// This is because WIs moved to the trash can are still in the Polarion WI table we query
     	if (wasMovedToRecycleBin(workItem)) {
     			workItemForJson = buildDeletedWorkItemForJson(workItem);
     	} else {
     			workItemForJson =
     		          processHistory(workItem, dataService, lastUpdate, includeCustomFields);
     	}
-      changes.add(workItemForJson);
+    	allItemsToSend.put(workItem.getId(), workItemForJson);
+//    	allItems.add(workItemForJson);
     }
+    
+    backwardLinksTobeAdded.forEach((workItemId, linkBundles) -> {
+    		WorkItemForJson workItemForJson = allItemsToSend.get(workItemId);
+    		if (workItemForJson != null) {
+    				Collection<WorkItemChange> workItemChanges = workItemForJson.getWorkItemChanges();
+    				linkBundles.forEach(linkBundle -> {
+        				WorkItemChange workItemChange = findRevisionEntry(workItemChanges, linkBundle);
+        				if (workItemChange == null) {
+        						workItemChange = new WorkItemChange(linkBundle.getRevision());	
+        						workItemForJson.addWorkItemChange(workItemChange);
+        				} 
+    						WorkItemFieldDiff fieldChangeEntry = findFieldChangeEntry(workItemChange, linkBundle);
+    						if (fieldChangeEntry == null) {
+    								fieldChangeEntry = new LinkFieldDiff(Utils.LINKED_WORK_ITEMS_FIELD_NAME, 
+    												linkBundle.getLinkedWorkItem().getLinkRoleId());
+    								workItemChange.addFieldChange(fieldChangeEntry);
+    						}
+    						if (linkBundle.isAdded()) {
+    								fieldChangeEntry.addElementAdded(linkBundle.getLinkedWorkItem().getId());
+    						} else {
+    								fieldChangeEntry.addElementRemoved(linkBundle.getLinkedWorkItem().getId());
+    						}    						
+    				});
+    		}
+    });
     
     timeAfter = System.currentTimeMillis();
     logger.info("[Teamscale Polarion Plugin] Finished processing request results. "
@@ -227,7 +265,32 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    
     System.out.println(version+" took " + (timeAfter - timeBefore) + " milliseconds");
     
-    return changes;
+//    return allItems;
+  }
+  
+  private WorkItemChange findRevisionEntry(Collection<WorkItemChange> workItemChanges, LinkBundle linkBundle) {
+  		
+  		if (workItemChanges == null) return null;
+  		
+  		for (WorkItemChange workItemChange : workItemChanges) {
+  				if (workItemChange.getRevision().equals(linkBundle.getRevision()) ) { 
+  						return workItemChange;
+  				}
+  		}
+  		return null;
+  }
+  
+  private WorkItemFieldDiff findFieldChangeEntry(WorkItemChange workItemChange, LinkBundle linkBundle) {
+			for (WorkItemFieldDiff fieldChangeEntry : workItemChange.getFieldChanges()) {		
+					if (fieldChangeEntry.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)
+									&& fieldChangeEntry instanceof LinkFieldDiff
+									&& ((LinkFieldDiff)fieldChangeEntry)
+										.getLinkRoleId()
+										.equals(linkBundle.getLinkedWorkItem().getLinkRoleId())) {
+							return fieldChangeEntry;
+					}
+			}  	
+			return null;
   }
   
   /** 
@@ -260,7 +323,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     		IChange[] changes = diffManager.generateHistory(workItem, new HashSet<String>(), new String[0], false);
     		if (changes != null && changes.length > 0) {
             Collection<WorkItemChange> workItemChanges =
-                    collectWorkItemChanges(changes, lastUpdate);
+                    collectWorkItemChanges(workItem.getId(), changes, lastUpdate);
                 workItemForJson.setWorkItemChanges(workItemChanges);
             
                 // ORDERED??
@@ -286,7 +349,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       	int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory, lastUpdate);
         IDiffManager diffManager = dataService.getDiffManager();
         Collection<WorkItemChange> workItemChanges =
-            collectWorkItemChanges(workItemHistory, diffManager, lastUpdate, lastUpdateIndex);
+            collectWorkItemChanges(workItem.getId(), workItemHistory, diffManager, lastUpdate, lastUpdateIndex);
         workItemForJson.setWorkItemChanges(workItemChanges);
 
         workItemForJson.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
@@ -302,7 +365,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
   
   private Collection<WorkItemChange> collectWorkItemChanges(
-  				List<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate, int lastUpdateIndex) {
+  				String workItemId, 
+  				List<IWorkItem> workItemHistory, 
+  				IDiffManager diffManager, 
+  				String lastUpdate, 
+  				int lastUpdateIndex) {
   		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
   		
   		// Short circuit: no changes to look for
@@ -316,7 +383,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   										diffManager.generateDiff(
   														workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
   						WorkItemChange fieldChangesToAdd =
-  										collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
+  										collectFieldChanges(workItemId, fieldDiffs, workItemHistory.get(next).getRevision());
   						if (fieldChangesToAdd != null) {
   								workItemChanges.add(fieldChangesToAdd);
   						}
@@ -326,38 +393,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		}
   		return workItemChanges;
   }
-
-//  private Collection<WorkItemChange> collectWorkItemChanges(
-//      List<IWorkItem> workItemHistory, IDiffManager diffManager, String lastUpdate) {
-//    Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
-//    int index = 0;
-//    int next = 1;
-//    while (next < workItemHistory.size()) {
-//      if (Long.valueOf(workItemHistory.get(next).getRevision()) > Long.valueOf(lastUpdate)) {
-//        IFieldDiff[] fieldDiffs =
-//            diffManager.generateDiff(
-//                workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
-//        WorkItemChange fieldChangesToAdd =
-//            collectFieldChanges(fieldDiffs, workItemHistory.get(next).getRevision());
-//        if (fieldChangesToAdd != null) {
-//          workItemChanges.add(fieldChangesToAdd);
-//        }
-//      }
-//      index++;
-//      next++;
-//    }
-//    return workItemChanges;
-//  }
   
   private Collection<WorkItemChange> collectWorkItemChanges(
-  				IChange[] changes, String lastUpdate) {
+  				String workItemId, IChange[] changes, String lastUpdate) {
   		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
 
   		for (int index = 0; index < changes.length; index++) {
   				if (Long.valueOf(changes[index].getRevision()) > Long.valueOf(lastUpdate)) {
   						IFieldDiff[] fieldDiffs = changes[index].getDiffs();
   						WorkItemChange fieldChangesToAdd =
-  										collectFieldChanges(fieldDiffs, changes[index].getRevision());
+  										collectFieldChanges(workItemId, fieldDiffs, changes[index].getRevision());
   						if (fieldChangesToAdd != null) {
   								workItemChanges.add(fieldChangesToAdd);
   						}  						
@@ -367,14 +412,14 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		return workItemChanges;
   } 
 
-  private WorkItemChange collectFieldChanges(IFieldDiff[] fieldDiffs, String revision) {
+  private WorkItemChange collectFieldChanges(String workItemId, IFieldDiff[] fieldDiffs, String revision) {
     WorkItemChange workItemChange = new WorkItemChange(revision);
     
     if (fieldDiffs == null) return null;
     
     for (IFieldDiff fieldDiff : fieldDiffs) {
       if (fieldDiff.isCollection()) {
-        collectFieldDiffAsCollection(workItemChange, fieldDiff);
+        collectFieldDiffAsCollection(workItemId, workItemChange, fieldDiff);
       } else {
         WorkItemFieldDiff fieldChange =
             new WorkItemFieldDiff(fieldDiff.getFieldName());
@@ -386,7 +431,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return workItemChange;
   }
 
-  private void collectFieldDiffAsCollection(WorkItemChange workItemChange, IFieldDiff fieldDiff) {
+  private void collectFieldDiffAsCollection(String workItemId, WorkItemChange workItemChange, IFieldDiff fieldDiff) {
     // Polarion returns unparameterized Collections for these two methods
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
@@ -396,32 +441,34 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       // convertible into IPObjectList. So, we treat them separately.
       if (Utils.isCollectionHyperlinkStructList(added)) {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsAdded(Utils.castHyperlinksToStrArray(added));
+        fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(added));
         // Then we check if they're ILiknedWorkItemStruc, because, again,
         // Polarion treats those 'struct' objects differently thank regular
         // IPObjects
       } else if (Utils.isCollectionLinkedWorkItemStructList(added)) {
       	// If the collection is a list of LinkedWorkItemStruct, we also treat them specifically
       	String linkRoleId = ((ILinkedWorkItemStruct)added.iterator().next()).getLinkRole().getId();
-      	if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)) {
+      	if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals) 
+      					&& fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
       			fieldChange	= new LinkFieldDiff(fieldDiff.getFieldName(), 
       								((ILinkedWorkItemStruct)added.iterator().next()).getLinkRole().getId());
-      			fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrArray(added));	
+      			fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrList(added));	
+      			updateOppositeLinksMap(workItemId, workItemChange.getRevision(), added, true);	
       	}
       } else if (Utils.isCollectionApprovalStructList(added)) {
       	// If the collection is a list of ApprovalStruct, we also treat them specifically
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsAdded(Utils.castApprovalsToStrArray(added));
+        fieldChange.setElementsAdded(Utils.castApprovalsToStrList(added));
       } else {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
-          fieldChange.setElementsAdded(Utils.castCollectionToStrArray((List<IPObject>) added));
+          fieldChange.setElementsAdded(Utils.castCollectionToStrList((List<IPObject>) added));
         } catch (ClassCastException ex) {
           // For now, when an added element/value is not among the ones we're supposed
           // to support in Teamscale, we simply add as an empty string array.
           // Alternatively, we could ignore the field as a change
           // (skip the field from the json output)
-          fieldChange.setElementsAdded(new String[] {""});
+          fieldChange.setElementsAdded(new ArrayList<String>());
         }
       }
       if (fieldChange != null) {
@@ -432,33 +479,95 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       WorkItemFieldDiff fieldChange = null;
       if (Utils.isCollectionHyperlinkStructList(removed)) {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsRemoved(Utils.castHyperlinksToStrArray(removed));
+        fieldChange.setElementsRemoved(Utils.castHyperlinksToStrList(removed));
       } else if (Utils.isCollectionLinkedWorkItemStructList(removed)) {
       		String linkRoleId = ((ILinkedWorkItemStruct)removed.iterator().next()).getLinkRole().getId();
-        	if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)) {
+        	if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals) 
+        					&& fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
         			fieldChange	= new LinkFieldDiff(fieldDiff.getFieldName(), 
         								((ILinkedWorkItemStruct)removed.iterator().next()).getLinkRole().getId());
-        			fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrArray(removed));	
+        			fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrList(removed));	
+        			updateOppositeLinksMap(workItemId, workItemChange.getRevision(), removed, false);
         	}
       } else if (Utils.isCollectionApprovalStructList(removed)) {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsRemoved(Utils.castApprovalsToStrArray(removed));
+        fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(removed));
       } else {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
-          fieldChange.setElementsRemoved(Utils.castCollectionToStrArray((List<IPObject>) removed));
+          fieldChange.setElementsRemoved(Utils.castCollectionToStrList((List<IPObject>) removed));
         } catch (ClassCastException ex) {
           // For now, when a removed element/value is not among the ones we're supposed
           // to support in Teamscale, we simply add as an empty string array.
           // Alternatively, we could ignore the field as a change
           // (skip the field from the output)
-          fieldChange.setElementsRemoved(new String[] {""});
+          fieldChange.setElementsRemoved(new ArrayList<String>());
         }
       }
       if (fieldChange != null) {
       		workItemChange.addFieldChange(fieldChange);
       }
     }
+  }
+  
+  /** 
+   * This maintains a map of opposite work item links. This is necessary since Polarion
+   * doesn't generate a change/field diff for the opposite end of the link.
+   * So, we need to generate those link changes manually for receiving end.
+   * @param	workItemId represents the link origin
+   * @param revision represents the revision number when the link changed (added/removed)
+   * @param links represents a collection generated by Polarion containing the added/removed links
+   * @param added is true if this a list of added links, otherwise these are removed links
+   *  **/
+  private void updateOppositeLinksMap(
+  				String workItemId, 
+  				String revision, 
+  				Collection<ILinkedWorkItemStruct> links,
+  				boolean added) {
+  		
+  		// For each link struct, get the WI id, check if there's an entry in the map
+  		// if there is, check if there's a link of same type, action (added/removed), and revision
+  		// if there isn't, add an entry to the map flipping the ids (reverse)
+  		for (ILinkedWorkItemStruct linkStruct : links) {
+  				List<LinkBundle> linkBundles = backwardLinksTobeAdded.get(linkStruct.getLinkedItem().getId());
+  				LinkBundle reverse = null;
+  				if (linkBundles == null) {
+  						reverse = new LinkBundle();
+  	  				reverse.setAdded(added);
+  	  				reverse.setRevision(revision);
+  	  				reverse.setLinkedWorkItem(new LinkedWorkItem(workItemId, linkStruct.getLinkRole().getId()));
+  	  				List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
+  	  				newLinkBundles.add(reverse);
+  	  				backwardLinksTobeAdded.put(linkStruct.getLinkedItem().getId(), newLinkBundles);
+  				} else {
+  	  				for (LinkBundle linkBundle : linkBundles) {
+  	  						if (linkBundle.getRevision().equals(revision) && linkBundle.isAdded() == added 
+  	  										&& linkBundle.getLinkedWorkItem().getLinkRoleId().equals(linkStruct.getLinkRole().getId())
+  	  										&& linkBundle.getLinkedWorkItem().getId().equals(linkStruct.getLinkedItem().getId())){
+  	  								//repeated entry
+  	  								break ;
+  	  						} else if (linkBundle.getRevision().equals(revision)) {
+  	  								//matched revision but different add/remove action or different link role
+  	  								reverse = new LinkBundle();
+  	  								reverse.setAdded(added);
+  	  								reverse.setRevision(revision);
+  	  								reverse.setLinkedWorkItem(new LinkedWorkItem(workItemId, linkStruct.getLinkRole().getId()));
+  	  								linkBundles.add(reverse);
+  	  								break ;
+  	  						}
+  	  				}
+  	  				// if reverse is not null, then not found matching entry, create new one
+  	  				if (reverse == null) {
+  	  					reverse = new LinkBundle();
+    	  				reverse.setAdded(added);
+    	  				reverse.setRevision(revision);
+    	  				reverse.setLinkedWorkItem(new LinkedWorkItem(workItemId, linkStruct.getLinkRole().getId()));
+    	  				List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
+    	  				newLinkBundles.add(reverse);
+    	  				backwardLinksTobeAdded.put(linkStruct.getLinkedItem().getId(), newLinkBundles);
+  	  				}
+  				}
+  		}
   }
   
   /** Binary search to cut down the search space since the list is ordered in ascending order**/

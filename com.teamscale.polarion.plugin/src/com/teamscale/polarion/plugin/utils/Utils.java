@@ -14,6 +14,8 @@ import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,6 +25,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Utils {
+		
+	public static String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
 		
 	public enum UpdateType {
 			UPDATED,
@@ -70,20 +74,20 @@ public class Utils {
     if (workItem.getProjectId() != null) workItemForJson.setProjectId(workItem.getProjectId());
     if (workItem.getAuthor() != null) workItemForJson.setAuthor(workItem.getAuthor().getId());
     if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty())
-      workItemForJson.setWatchers(castCollectionToStrArray(workItem.getWatchingUsers()));
+      workItemForJson.setWatchers(castCollectionToStrList(workItem.getWatchingUsers()));
     if (includeCustomFields != null
         && includeCustomFields.length > 0
         && workItem.getCustomFieldsList() != null
         && !workItem.getCustomFieldsList().isEmpty())
       workItemForJson.setCustomFields(castCustomFields(workItem, includeCustomFields));
     if (workItem.getAssignees() != null && !workItem.getAssignees().isEmpty())
-      workItemForJson.setAssignees(castCollectionToStrArray(workItem.getAssignees()));
+      workItemForJson.setAssignees(castCollectionToStrList(workItem.getAssignees()));
     if (workItem.getAttachments() != null && !workItem.getAttachments().isEmpty())
-      workItemForJson.setAttachments(castCollectionToStrArray(workItem.getAttachments()));
+      workItemForJson.setAttachments(castCollectionToStrList(workItem.getAttachments()));
     if (workItem.getCategories() != null && !workItem.getCategories().isEmpty())
-      workItemForJson.setCategories(castCollectionToStrArray(workItem.getCategories()));
+      workItemForJson.setCategories(castCollectionToStrList(workItem.getCategories()));
     if (workItem.getHyperlinks() != null && !workItem.getHyperlinks().isEmpty())
-      workItemForJson.setHyperLinks(castHyperlinksToStrArray(workItem.getHyperlinks()));
+      workItemForJson.setHyperLinks(castHyperlinksToStrList(workItem.getHyperlinks()));
     if (workItem.getComments() != null && !workItem.getComments().isEmpty())
       workItemForJson.setComments(
           workItem.getComments().stream()
@@ -125,53 +129,50 @@ public class Utils {
     return workItemForJson;
   }
 
-  public static String[] castHyperlinksToStrArray(Collection hyperlinks) {
-    String[] result = new String[] {""};
+  public static List<String> castHyperlinksToStrList(Collection hyperlinks) {
+  	List<String> result = new ArrayList<String>();
     if (isCollectionHyperlinkStructList(hyperlinks)) {
       try {
         List<IHyperlinkStruct> collection = (List<IHyperlinkStruct>) hyperlinks;
         result =
             collection.stream()
-                .map(elem -> elem.getValue(IHyperlinkStruct.KEY_URI))
-                .toArray(size -> new String[size]);
+                .map(elem -> ((IHyperlinkStruct)elem).getUri())
+                .collect(Collectors.toList());
       } catch (ClassCastException ex) {
-      	// not logging this very specific casting issue
-      	// so, just return an empty string array.
+      	// casting should not be an issue since we're checking it on the if 
         return result;
       }
     }
     return result;
   }
 
-  public static String[] castLinkedWorkItemsToStrArray(Collection linkedItems) {
-    String[] result = new String[] {""};
+  public static List<String> castLinkedWorkItemsToStrList(Collection linkedItems) {
+    List<String> result = new ArrayList<String>();
     if (isCollectionLinkedWorkItemStructList(linkedItems)) {
       try {
         List<ILinkedWorkItemStruct> collection = (List<ILinkedWorkItemStruct>) linkedItems;
-        result =
-            collection.stream()
-                .map(elem -> elem.getLinkedItem().getId())
-                .toArray(size -> new String[size]);
+        result = collection
+            	.stream()
+              .map(elem -> elem.getLinkedItem().getId())
+              .collect(Collectors.toList());
       } catch (ClassCastException ex) {
-        // not logging this very specific casting issue
-        // so, just return an empty string array.
+      	// casting should not be an issue since we're checking it on the if 
       }
     }
     return result;
   }
 
-  public static String[] castApprovalsToStrArray(Collection approvals) {
-    String[] result = new String[] {""};
+  public static List<String> castApprovalsToStrList(Collection approvals) {
+  	List<String> result = new ArrayList<String>();
     if (isCollectionApprovalStructList(approvals)) {
       try {
-        List<IApprovalStruct> collection = (List<IApprovalStruct>) approvals;
+        List<IApprovalStruct> collection = (List<IApprovalStruct>)approvals;
         result =
             collection.stream()
-                .map(elem -> elem.getUser().getId())
-                .toArray(size -> new String[size]);
+                .map(elem -> ((IApprovalStruct)elem).getUser().getId())
+                .collect(Collectors.toList());
       } catch (ClassCastException ex) {
-      	// not logging this very specific casting issue
-      	// so, just return an empty string array.
+      	// casting should not be an issue since we're checking it on the if 
       }
     }
     return result;
@@ -220,25 +221,20 @@ public class Utils {
   }
 
   private static HashMap<String, Object> castCustomFields(
-      IWorkItem workItem, String[] includeCustomFields) {
-    //		Collection<String> customFieldsList = workItem.getCustomFieldsList();
-    Set<String> customFields = new HashSet<>(workItem.getCustomFieldsList());
-    Set<String> targetSet = new HashSet<>(Arrays.asList(includeCustomFields));
+  	IWorkItem workItem, String[] includeCustomFields) {
 
-    //		customFieldsList.forEach( fieldName -> {
-    //			if (includeCustomFields)
-    //			converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
-    //		});
+		Set<String> customFields = new HashSet<>(workItem.getCustomFieldsList());
+		Set<String> targetSet = new HashSet<>(Arrays.asList(includeCustomFields));
 
-    targetSet.retainAll(customFields);
+		targetSet.retainAll(customFields);
 
-    HashMap<String, Object> converted = new HashMap<String, Object>(targetSet.size());
-    targetSet.forEach(
-        fieldName -> {
-          converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
-        });
+		HashMap<String, Object> converted = new HashMap<String, Object>(targetSet.size());
+		targetSet.forEach(
+						fieldName -> {
+								converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
+						});
 
-    return converted;
+		return converted;
   }
 
   /**
@@ -278,7 +274,7 @@ public class Utils {
     }
   }
 
-  public static String[] castCollectionToStrArray(List<IPObject> collection) {
+  public static List<String> castCollectionToStrList(List<IPObject> collection) {
     return collection.stream()
         .map(
             elem -> {
@@ -300,7 +296,7 @@ public class Utils {
                 return "";
               }
             })
-        .toArray(size -> new String[size]);
+        .collect(Collectors.toList());
   }
 
 }
