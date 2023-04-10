@@ -7,11 +7,13 @@ import com.polarion.alm.tracker.model.ICategory;
 import com.polarion.alm.tracker.model.IComment;
 import com.polarion.alm.tracker.model.IHyperlinkStruct;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
+import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITestSteps;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.types.duration.DurationTime;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
+import com.polarion.subterra.base.location.ILocation;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 
@@ -71,6 +73,7 @@ public class Utils {
     if (workItem.getUpdated() != null)
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
     if (workItem.getModule() != null) workItemForJson.setModuleId(workItem.getModule().getId());
+    if (workItem.getModule() != null) workItemForJson.setModuleTitle(workItem.getModule().getTitle());
     if (workItem.getProjectId() != null) workItemForJson.setProjectId(workItem.getProjectId());
     if (workItem.getAuthor() != null) workItemForJson.setAuthor(workItem.getAuthor().getId());
     if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty())
@@ -251,8 +254,13 @@ public class Utils {
       return ((IEnumOption) value).getName(); // Or should it be getId()?
     } else if (value instanceof java.util.Date) {
       return ((java.util.Date) value).toInstant().toString();
-    } else if (value instanceof DurationTime) return ((DurationTime) value).toString();
-    else {
+    } else if (value instanceof DurationTime) {
+    		return ((DurationTime) value).toString();
+    } else if (value instanceof ILocation) {
+        return ((ILocation) value).getLocationPath();
+    } else if (value instanceof IModule) {
+          return ((IModule) value).getId();
+    } else {
       return value.toString();
     }
   }
@@ -288,8 +296,6 @@ public class Utils {
                 return ((IComment) elem).getId();
               } else if (elem instanceof IWorkItem) {
                 return ((IWorkItem) elem).getId();
-//              } else if (elem instanceof ILinkedWorkItemStruct) {
-//                return ((IWorkItem) elem).getId();
               } else if (elem != null) {
                 return elem.toString();
               } else {

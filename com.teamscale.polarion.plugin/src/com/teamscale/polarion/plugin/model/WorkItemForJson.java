@@ -43,6 +43,7 @@ public class WorkItemForJson {
   private String[] comments;
   private LinkedWorkItem[] linkedWorkItems; // All links (in and out links)
   private String moduleId;
+  private String moduleTitle;
   private String projectId;
   private List<String> watchers;
 
@@ -288,6 +289,14 @@ public class WorkItemForJson {
 
   public void setModuleId(String moduleId) {
     this.moduleId = moduleId;
+  }
+  
+  public String getModuleTitle() {
+  		return moduleTitle;
+  }
+  
+  public void setModuleTitle(String moduleTitle) {
+  		this.moduleTitle = moduleTitle;
   }
 
   public String getProjectId() {
