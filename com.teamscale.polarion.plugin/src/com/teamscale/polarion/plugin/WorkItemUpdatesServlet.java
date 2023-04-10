@@ -118,17 +118,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       if (validateParameters(projId, spaceId, docId)) {
         ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
         
-//        if (!validateRevisionNumberString(lastUpdate)) {
-//          // Rather than raising an exception and sending an error response,
-//          // here we assume all the changes should be returned if lastUpdate is absent.
-//        		// Or shall we invalidate the request and return an http error code (e.g., 400, 404?)
-//          lastUpdate = "0";
-//        }
-//        if (!validateRevisionNumberString(endRevision)) {
-//        		//Similarly, if endRevision is 'invalid', consider all the way to HEAD
-//        		endRevision = "-1";
-//        }
-        
         //Resetting these Servlet global maps.
         backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
         allItemsToSend = new HashMap<String, WorkItemForJson>();
@@ -200,17 +189,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     sqlQuery.append(" and M.C_ID = '" + docId + "'");
     sqlQuery.append(" and M.C_MODULEFOLDER = '" + spaceId + "'");
     sqlQuery.append(" and WI.C_REV > " + lastUpdate);
-//    sqlQuery.append(generateEndRevisionClause());
     sqlQuery.append(generateWorkItemTypesAndClause());
 
     return sqlQuery.toString();
-  }
-  
-  private String generateEndRevisionClause() {
-  		if (!endRevision.equals("-1")) {
-  				return " and WI.C_REV <= " + endRevision;
-  		}
-  		return "";
   }
 
   /** If empty, work items of all types should be included. * */
@@ -284,6 +265,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     
   }
   
+  /** This method will create the WI changes on the opposite side of the link changes **/
   private void createLinkChangesOppositeEntries() {
       backwardLinksTobeAdded.forEach((workItemId, linkBundles) -> {
       		WorkItemForJson workItemForJson = allItemsToSend.get(workItemId);
@@ -311,6 +293,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       });  		
   }
   
+  /** Helper method for {@link #createLinkChangesOppositeEntries}. **/
   private WorkItemChange findRevisionEntry(Collection<WorkItemChange> workItemChanges, LinkBundle linkBundle) {
   		
   		if (workItemChanges == null) return null;
@@ -323,6 +306,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		return null;
   }
   
+  /** Helper method for {@link #createLinkChangesOppositeEntries}. **/
   private WorkItemFieldDiff findFieldChangeEntry(WorkItemChange workItemChange, LinkBundle linkBundle) {
 			for (WorkItemFieldDiff fieldChangeEntry : workItemChange.getFieldChanges()) {		
 					if (fieldChangeEntry.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)
@@ -339,18 +323,20 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   /** 
    *  In Polarion, WIs in the recycle bin will still come in the SQL query, as 
    *  in the database level they're still related to the module.
-   *  However, the following API method exclude them and consider them as items
+   *  However, the following API method excludes them and consider them as items
    *  NOT contained in the module.
    *  **/
   private boolean wasMovedToRecycleBin(IWorkItem workItem) {
   		return !module.containsWorkItem(workItem);
   }
   
+  /** Create the work item object as DELETED **/
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
   		return new WorkItemForJson(workItem.getId(), 
 							Utils.UpdateType.DELETED, workItem.getLastRevision());
   }
 
+  /** Main method that will process the work item history based on the parameters in the request **/
   private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
   		
   		//No matter what endRevision is, we're always returning the latest version of the WI.
@@ -390,6 +376,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return workItemForJson;
   }
   
+  /** 
+   * Helper method that will collect work item changes (WorkItemChange) based on the diff of each 
+   * pair of work item versions in a given work item history.
+   * **/
   private Collection<WorkItemChange> collectWorkItemChanges(
   				String workItemId, 
   				List<IWorkItem> workItemHistory, 
@@ -422,6 +412,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		return workItemChanges;
   }
 
+  /** 
+   * Helper method that will collect field changes (to be included in a WorkItemChange object) based on the diff
+   * created at {@link #collectWorkItemChanges(String, List, IDiffManager, int)}
+   * **/
   private WorkItemChange collectFieldChanges(String workItemId, IFieldDiff[] fieldDiffs, String revision) {
     WorkItemChange workItemChange = new WorkItemChange(revision);
     
@@ -441,6 +435,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return workItemChange;
   }
 
+  /** 
+   * Helper method that will process field changes when the field is a collection type of field.
+   * Rather then having a 'before value' replaced by an 'after value' Polarion returns these fields
+   * with elements that were added or removed in the revision.
+   * **/ 
   private void collectFieldDiffAsCollection(String workItemId, WorkItemChange workItemChange, IFieldDiff fieldDiff) {
     // Polarion returns unparameterized Collections for these two methods
     Collection added = fieldDiff.getAdded();
@@ -562,6 +561,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		}
   }
   
+  /** Helper method called by {@link #updateOppositeLinksMap()} to check if a LinkBundle was already created in the map **/
   private boolean alreadyHasLinkBundle(List<LinkBundle> linkBundles, ILinkedWorkItemStruct linkStruct, String revision, boolean added) {
 			if (linkBundles == null) return false;
   		for (LinkBundle linkBundle : linkBundles) {
@@ -609,6 +609,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       return (index == 0 ? index : index - 1);
   }
 
+  /*
+   * This method validates these required request attributes.
+   * Split into three separate helper methods, one for each param.
+   *  */
   private boolean validateParameters(String projectId, String space, String doc) {
     // Needs to be executed in this order. Space validation only runs after projectId is validated.
     // DocId is validated only if projectId and SpaceId are validated.
