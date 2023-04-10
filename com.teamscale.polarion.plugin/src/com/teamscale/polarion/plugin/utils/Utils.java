@@ -288,8 +288,8 @@ public class Utils {
                 return ((IComment) elem).getId();
               } else if (elem instanceof IWorkItem) {
                 return ((IWorkItem) elem).getId();
-              } else if (elem instanceof ILinkedWorkItemStruct) {
-                return ((IWorkItem) elem).getId();
+//              } else if (elem instanceof ILinkedWorkItemStruct) {
+//                return ((IWorkItem) elem).getId();
               } else if (elem != null) {
                 return elem.toString();
               } else {

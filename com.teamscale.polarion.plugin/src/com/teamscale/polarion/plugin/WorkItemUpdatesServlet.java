@@ -61,8 +61,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   // If empty, no work item links should be included. We expect role IDs (not role names)
   private String[] includeLinkRoles;
   
-  // base revision # for the request
+  // Base revision # for the request
   private String lastUpdate;
+  
+  // End revision # to indicate the final revision (included) the request is looking for
+  private String endRevision;
   
   // List of possible types the result can have. If empty, items of all types should be included.
   private String[] workItemTypes;
@@ -75,12 +78,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   // Polarion doesn't return a diff/change associated with the opposite end of the link
   // when a link changes (added/removed). 
   // The key of this map is the workItemId to receive the change
-  private Map<String, List<LinkBundle>> backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
+  private Map<String, List<LinkBundle>> backwardLinksTobeAdded;
   
   // This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
   // This provides O(1) access when, at the end, we need to go back and feed them with
   // the work items opposite link changes.
-  private Map<String, WorkItemForJson> allItemsToSend = new HashMap<String, WorkItemForJson>();
+  private Map<String, WorkItemForJson> allItemsToSend;
   
   /* (non-Javadoc)
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
@@ -95,6 +98,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     String docId = (String) req.getAttribute("document");
 
     lastUpdate = req.getParameter("lastUpdate");
+    endRevision = req.getParameter("endRevision");
 
     workItemTypes = req.getParameterValues("includedWorkItemTypes");
 
@@ -102,21 +106,36 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
     
+    if (!processRevisionNumbers()) {
+        logger.info("[Teamscale Polarion Plugin] Invalid revision numbers. Review the lastUpdate and endRevision strings.");
+        res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
+        return ;
+    }
+    
     try {
       // To prevent SQL injection issues
       // Check if the request params are valid IDs before putting them into the SQL query
       if (validateParameters(projId, spaceId, docId)) {
         ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
-        if (!validateLastUpdateString()) {
-          // Rather than raising an exception and sending an error response,
-          // here we assume all the changes should be returned if lastUpdate is absent.
-          lastUpdate = "0";
-        }
-        retrieveChanges(
-                projId,
-                spaceId,
-                docId);
+        
+//        if (!validateRevisionNumberString(lastUpdate)) {
+//          // Rather than raising an exception and sending an error response,
+//          // here we assume all the changes should be returned if lastUpdate is absent.
+//        		// Or shall we invalidate the request and return an http error code (e.g., 400, 404?)
+//          lastUpdate = "0";
+//        }
+//        if (!validateRevisionNumberString(endRevision)) {
+//        		//Similarly, if endRevision is 'invalid', consider all the way to HEAD
+//        		endRevision = "-1";
+//        }
+        
+        //Resetting these Servlet global maps.
+        backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
+        allItemsToSend = new HashMap<String, WorkItemForJson>();
+        
+        retrieveChanges(projId, spaceId, docId);
         sendResponse(res);
+        
         logger.info("[Teamscale Polarion Plugin] Successful response sent");
       } else {
         logger.info("[Teamscale Polarion Plugin] Invalid conbination of projectId/folderId/documentId");
@@ -134,13 +153,33 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
   }
 
-  /* (non-Javadoc)
+  /* This method is necessary since Polarion redirects a POST request when the original GET request to this servlet 
+   * is attempted without being authenticated. Polarion redirects the client to a login form.
+   * Once the client sends an auth request (which is a POST) and is successfully authenticated, 
+   * Polarion then redirects the auth post request to this servlet (which we then call the method doGet).
    * @see javax.servlet.http.HttpServlet#doPost(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
    */
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp)
       throws ServletException, IOException {
     doGet(req, resp);
+  }
+  
+  private boolean processRevisionNumbers() {
+  		if (lastUpdate == null) {
+  				lastUpdate = "0"; // process from beginning
+  		} else if (!validateRevisionNumberString(lastUpdate)){
+  				return false;
+  		}
+
+  		if (endRevision == null) {
+  				// process all the way to HEAD
+  				endRevision = String.valueOf(Integer.MAX_VALUE); 
+  		} else if (!validateRevisionNumberString(endRevision)) {
+  				return false;
+  		}
+  		
+  		return (Integer.valueOf(lastUpdate) < Integer.valueOf(endRevision));
   }
 
   private void sendResponse(HttpServletResponse resp)
@@ -152,8 +191,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     out.print(jsonResult);
   }
 
-  private String buildSqlQuery(
-      String projId, String spaceId, String docId) {
+  private String buildSqlQuery(String projId, String spaceId, String docId) {
 
     StringBuilder sqlQuery = new StringBuilder("select * from WORKITEM WI ");
     sqlQuery.append("inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI ");
@@ -162,13 +200,21 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     sqlQuery.append(" and M.C_ID = '" + docId + "'");
     sqlQuery.append(" and M.C_MODULEFOLDER = '" + spaceId + "'");
     sqlQuery.append(" and WI.C_REV > " + lastUpdate);
-    sqlQuery.append(getWorkItemTypesAndClause());
+//    sqlQuery.append(generateEndRevisionClause());
+    sqlQuery.append(generateWorkItemTypesAndClause());
 
     return sqlQuery.toString();
   }
+  
+  private String generateEndRevisionClause() {
+  		if (!endRevision.equals("-1")) {
+  				return " and WI.C_REV <= " + endRevision;
+  		}
+  		return "";
+  }
 
   /** If empty, work items of all types should be included. * */
-  private String getWorkItemTypesAndClause() {
+  private String generateWorkItemTypesAndClause() {
     StringBuilder andClause = new StringBuilder("");
     if (workItemTypes != null && workItemTypes.length > 0) {
       andClause.append(" and WI.C_TYPE in (");
@@ -185,19 +231,25 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return andClause.toString();
   }
 
-  private boolean validateLastUpdateString() {
-    if (lastUpdate != null) {
-      Pattern pattern = Pattern.compile("\\d+");
-      Matcher matcher = pattern.matcher(lastUpdate);
-      return matcher.matches();
+  /** 
+   * Based on Polarion documentation, the revision column is INTEGER.
+   * In Postgresql, the max integer is the same as the max Java integer, which is the
+   * maximum revision number a project can have in Polarion/SVN.
+   * For reference: https://almdemo.polarion.com/polarion/sdk/doc/database/FullDBSchema.pdf
+   * */
+  private boolean validateRevisionNumberString(String revision) {
+    if (revision != null) {
+    		try {
+    				int n = Integer.parseInt(revision);
+    				return n >= 0;
+    		} catch (NumberFormatException e) {
+    				return false;
+    		}
     }
     return false;
   }
 
-  private void retrieveChanges(
-      String projId,
-      String spaceId,
-      String docId) {
+  private void retrieveChanges(String projId, String spaceId, String docId) {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
     
@@ -299,9 +351,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 							Utils.UpdateType.DELETED, workItem.getLastRevision());
   }
 
-  private WorkItemForJson processHistory(
-      IWorkItem workItem,
-      IDataService dataService) {
+  private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
+  		
+  		//No matter what endRevision is, we're always returning the latest version of the WI.
+  		// Plus its changes up to the endRevision.
     WorkItemForJson workItemForJson =
         Utils.castWorkItem(workItem, includeCustomFields, includeLinkRoles);
     
@@ -321,6 +374,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         IDiffManager diffManager = dataService.getDiffManager();
         Collection<WorkItemChange> workItemChanges =
             collectWorkItemChanges(workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
+        //If we want to return the WI version matching the end revision #, we could just
+        //reuse the loop in collectWorkItemChanges that will always stop at the endRevision
+        // or at the last element of the list
         workItemForJson.setWorkItemChanges(workItemChanges);
         workItemForJson.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
       } else {
@@ -342,12 +398,15 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   		Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
   		
   		// Short circuit: no changes to look for
+  		// This would happen when the lastUpdate request parameter is greater than the latest revision #
   		if (lastUpdateIndex < 0) return workItemChanges;
 
   		int index = lastUpdateIndex;
   		int next = index + 1;
-  		while (next < workItemHistory.size()) {
-  				if (Long.valueOf(workItemHistory.get(next).getRevision()) > Long.valueOf(lastUpdate)) {
+  		while (next < workItemHistory.size() && 
+  						Integer.valueOf(workItemHistory.get(next).getRevision()) <= Integer.valueOf(endRevision)) {
+  				
+  				if (Integer.valueOf(workItemHistory.get(next).getRevision()) > Integer.valueOf(lastUpdate)) {
   						IFieldDiff[] fieldDiffs =
   										diffManager.generateDiff(
   														workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
@@ -410,7 +469,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       	// If the collection is a list of ApprovalStruct, we also treat them specifically
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsAdded(Utils.castApprovalsToStrList(added));
-      } else {
+      } else if (!Utils.isCollectionLinkedWorkItemStructList(added)) {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
           fieldChange.setElementsAdded(Utils.castCollectionToStrList((List<IPObject>) added));
@@ -422,6 +481,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           fieldChange.setElementsAdded(new ArrayList<String>());
         }
       }
+      
       if (fieldChange != null) {
       		workItemChange.addFieldChange(fieldChange);
       }
@@ -443,7 +503,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       } else if (Utils.isCollectionApprovalStructList(removed)) {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(removed));
-      } else {
+      } else if (!Utils.isCollectionLinkedWorkItemStructList(removed)) {
       	fieldChange	= new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
           fieldChange.setElementsRemoved(Utils.castCollectionToStrList((List<IPObject>) removed));
@@ -517,16 +577,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   /** Binary search to cut down the search space since the list is ordered in ascending order**/
   private int searchIndexWorkItemHistory(IPObjectList<IWorkItem> workItemHistory) {
   		// Short circuit: don't need to binarysearch if you're looking for all history
-  		if (Long.valueOf(lastUpdate) <= 0) return 0;
+  		if (Integer.valueOf(lastUpdate) <= 0) return 0;
   		
   	  // Short circuit: don't need to search if lastUpdate already points to the last history item
-  		if (Long.valueOf(workItemHistory.get(workItemHistory.size() - 1)
-  						.getRevision()) == Long.valueOf(lastUpdate)) 
+  		if (Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1)
+  						.getRevision()) == Integer.valueOf(lastUpdate)) 
   						return workItemHistory.size() - 1;
   		
   	  // Short circuit: don't need to search if all the changes are before lastUpdate
-  		if (Long.valueOf(workItemHistory.get(workItemHistory.size() - 1)
-  						.getRevision()) < Long.valueOf(lastUpdate)) 
+  		if (Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1)
+  						.getRevision()) < Integer.valueOf(lastUpdate)) 
   						return -1;  
   		
       int left = 0;
@@ -536,9 +596,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       //binary search the 'lastUpdate index'
       while (left <= right) {
           int mid = (left + right) / 2;
-          if (Long.valueOf(workItemHistory.get(mid).getRevision()) < Long.valueOf(lastUpdate)) {
+          if (Integer.valueOf(workItemHistory.get(mid).getRevision()) < Integer.valueOf(lastUpdate)) {
               left = mid + 1;
-          } else if (Long.valueOf(workItemHistory.get(mid).getRevision()) == Long.valueOf(lastUpdate)){
+          } else if (Integer.valueOf(workItemHistory.get(mid).getRevision()) == Integer.valueOf(lastUpdate)){
               return mid;
           } else {
           		index = mid;
