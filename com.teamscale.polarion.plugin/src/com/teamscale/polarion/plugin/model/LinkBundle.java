@@ -1,17 +1,17 @@
 package com.teamscale.polarion.plugin.model;
 
-/** 
- * This is a helper object that maintains link data and is used to process
- * and generate opposite link changes in the plugin.
- * **/
+/**
+ * This is a helper object that maintains link data and is used to process and generate opposite
+ * link changes in the plugin. *
+ */
 public class LinkBundle {
 
-	// Whether this is an added or removed link
+  // Whether this is an added or removed link
   private boolean added;
-  
+
   // The object that represents the linked item and the role id
   private LinkedWorkItem linkedWorkItem;
-  
+
   // The revision # this link represents
   private String revision;
 

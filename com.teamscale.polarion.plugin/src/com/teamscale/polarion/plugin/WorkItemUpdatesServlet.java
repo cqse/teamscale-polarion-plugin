@@ -460,7 +460,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    */
   private void collectFieldDiffAsCollection(
       String workItemId, WorkItemChange workItemChange, IFieldDiff fieldDiff) {
-  		
+
     // Polarion returns unparameterized Collections for these two methods
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
