@@ -395,7 +395,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /**
    * Helper method that will collect work item changes (WorkItemChange) based on the diff of each
-   * pair of work item versions in a given work item history. *
+   * pair of work item versions in a given work item history.
    */
   private Collection<WorkItemChange> collectWorkItemChanges(
       String workItemId,
@@ -432,7 +432,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /**
    * Helper method that will collect field changes (to be included in a WorkItemChange object) based
-   * on the diff created at {@link #collectWorkItemChanges(String, List, IDiffManager, int)} *
+   * on the diff created at {@link #collectWorkItemChanges(String, List, IDiffManager, int)}
    */
   private WorkItemChange collectFieldChanges(
       String workItemId, IFieldDiff[] fieldDiffs, String revision) {
