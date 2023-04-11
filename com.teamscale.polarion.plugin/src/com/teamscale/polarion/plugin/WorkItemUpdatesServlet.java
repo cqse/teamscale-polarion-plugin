@@ -47,9 +47,9 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class WorkItemUpdatesServlet extends HttpServlet {
 
-		private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-		private static final ILogger logger = Logger.getLogger(WorkItemUpdatesServlet.class);
+  private static final ILogger logger = Logger.getLogger(WorkItemUpdatesServlet.class);
 
   private ITrackerService trackerService =
       (ITrackerService) PlatformContext.getPlatform().lookupService(ITrackerService.class);
