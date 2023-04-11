@@ -1,17 +1,15 @@
 package com.teamscale.polarion.plugin.model;
 
+import com.teamscale.polarion.plugin.utils.Utils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
-import com.teamscale.polarion.plugin.utils.Utils;
-import com.teamscale.polarion.plugin.utils.Utils.UpdateType;
-
 /**
- * This class represents the final WorkItem object to be serialized to json
- * which then goes in the response body (as json).
- * */
+ * This class represents the final WorkItem object to be serialized to json which then goes in the
+ * response body.
+ */
 public class WorkItemForJson {
 
   private String id;
@@ -53,11 +51,11 @@ public class WorkItemForJson {
   public WorkItemForJson(String id) {
     this.id = id;
   }
-  
+
   public WorkItemForJson(String id, Utils.UpdateType updateType, String revision) {
-  		this.id = id;
-  		this.updateType = updateType;
-  		this.revision = revision;
+    this.id = id;
+    this.updateType = updateType;
+    this.revision = revision;
   }
 
   public String getId() {
@@ -67,13 +65,13 @@ public class WorkItemForJson {
   public void setId(String workItemId) {
     this.id = workItemId;
   }
-  
+
   public Utils.UpdateType getUpdateType() {
-  		return updateType;
+    return updateType;
   }
-  
+
   public void setUpdateType(Utils.UpdateType updateType) {
-  		this.updateType = updateType;
+    this.updateType = updateType;
   }
 
   public String getRevision() {
@@ -147,13 +145,13 @@ public class WorkItemForJson {
   public void setPlannedStart(String plannedStart) {
     this.plannedStart = plannedStart;
   }
-  
+
   public String[] getPlannedIn() {
-  		return plannedIn;
+    return plannedIn;
   }
-  
+
   public void setPlannedIn(String[] plannedIn) {
-  		this.plannedIn = plannedIn;
+    this.plannedIn = plannedIn;
   }
 
   public String getPriority() {
@@ -299,13 +297,13 @@ public class WorkItemForJson {
   public void setModuleId(String moduleId) {
     this.moduleId = moduleId;
   }
-  
+
   public String getModuleTitle() {
-  		return moduleTitle;
+    return moduleTitle;
   }
-  
+
   public void setModuleTitle(String moduleTitle) {
-  		this.moduleTitle = moduleTitle;
+    this.moduleTitle = moduleTitle;
   }
 
   public String getProjectId() {
@@ -331,11 +329,11 @@ public class WorkItemForJson {
   public void setWorkItemChanges(Collection<WorkItemChange> workItemChanges) {
     this.workItemChanges = workItemChanges;
   }
-  
+
   public void addWorkItemChange(WorkItemChange workItemChange) {
-  	if (workItemChanges == null) {
-  			workItemChanges = new ArrayList<WorkItemChange>();
-  	}	
-  	workItemChanges.add(workItemChange);
+    if (workItemChanges == null) {
+      workItemChanges = new ArrayList<WorkItemChange>();
+    }
+    workItemChanges.add(workItemChange);
   }
 }

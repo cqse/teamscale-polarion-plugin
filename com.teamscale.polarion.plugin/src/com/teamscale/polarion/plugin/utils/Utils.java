@@ -16,7 +16,6 @@ import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.subterra.base.location.ILocation;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,19 +26,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Utils {
-		
-	public static String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
-		
-	public enum UpdateType {
-			UPDATED,
-			DELETED
-	}
+
+  public static String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
+
+  public enum UpdateType {
+    UPDATED,
+    DELETED
+  }
 
   public static WorkItemForJson castWorkItem(
       IWorkItem workItem, String[] includeCustomFields, String[] includeLinkRoles) {
 
-    WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId(), UpdateType.UPDATED,
-    				workItem.getLastRevision());
+    WorkItemForJson workItemForJson =
+        new WorkItemForJson(workItem.getId(), UpdateType.UPDATED, workItem.getLastRevision());
     if (workItem.getRevision() != null) workItemForJson.setRevision(workItem.getRevision());
     if (workItem.getDescription() != null)
       workItemForJson.setDescription(workItem.getDescription().getContent());
@@ -56,10 +55,10 @@ public class Utils {
     if (workItem.getPlannedStart() != null)
       workItemForJson.setPlannedStart(workItem.getPlannedStart().toInstant().toString());
     if (workItem.getPlannedIn() != null && !workItem.getPlannedIn().isEmpty()) {
-    		workItemForJson.setPlannedIn(
-      		workItem.getPlannedIn().stream()
-      			.map(plan -> plan.getId())
-      			.toArray(size -> new String[size]));
+      workItemForJson.setPlannedIn(
+          workItem.getPlannedIn().stream()
+              .map(plan -> plan.getId())
+              .toArray(size -> new String[size]));
     }
     if (workItem.getPriority() != null)
       workItemForJson.setPriority(workItem.getPriority().getName());
@@ -79,7 +78,8 @@ public class Utils {
     if (workItem.getUpdated() != null)
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
     if (workItem.getModule() != null) workItemForJson.setModuleId(workItem.getModule().getId());
-    if (workItem.getModule() != null) workItemForJson.setModuleTitle(workItem.getModule().getTitle());
+    if (workItem.getModule() != null)
+      workItemForJson.setModuleTitle(workItem.getModule().getTitle());
     if (workItem.getProjectId() != null) workItemForJson.setProjectId(workItem.getProjectId());
     if (workItem.getAuthor() != null) workItemForJson.setAuthor(workItem.getAuthor().getId());
     if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty())
@@ -112,9 +112,10 @@ public class Utils {
               .filter(
                   linkStruct ->
                       Arrays.asList(includeLinkRoles).contains(linkStruct.getLinkRole().getId()))
-              .map(linkStruct -> new LinkedWorkItem(
-              				linkStruct.getLinkedItem().getId(), 
-              				linkStruct.getLinkRole().getId()))
+              .map(
+                  linkStruct ->
+                      new LinkedWorkItem(
+                          linkStruct.getLinkedItem().getId(), linkStruct.getLinkRole().getId()))
               .collect(Collectors.toSet());
 
       Set<LinkedWorkItem> linksDirectSet =
@@ -122,16 +123,17 @@ public class Utils {
               .filter(
                   linkStruct ->
                       Arrays.asList(includeLinkRoles).contains(linkStruct.getLinkRole().getId()))
-              .map(linkStruct -> new LinkedWorkItem(
-              				linkStruct.getLinkedItem().getId(), 
-              				linkStruct.getLinkRole().getId()))
+              .map(
+                  linkStruct ->
+                      new LinkedWorkItem(
+                          linkStruct.getLinkedItem().getId(), linkStruct.getLinkRole().getId()))
               .collect(Collectors.toSet());
 
       if (!linksDirectSet.isEmpty() || !linksBackSet.isEmpty()) {
-      		// Set Union on the remaining links after filtering out undesired link roles
+        // Set Union on the remaining links after filtering out undesired link roles
         linksDirectSet.addAll(linksBackSet);
         workItemForJson.setLinkedWorkItems(
-                linksDirectSet.toArray(new LinkedWorkItem[linksDirectSet.size()]));
+            linksDirectSet.toArray(new LinkedWorkItem[linksDirectSet.size()]));
       }
     }
 
@@ -139,16 +141,16 @@ public class Utils {
   }
 
   public static List<String> castHyperlinksToStrList(Collection hyperlinks) {
-  	List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<String>();
     if (isCollectionHyperlinkStructList(hyperlinks)) {
       try {
         List<IHyperlinkStruct> collection = (List<IHyperlinkStruct>) hyperlinks;
         result =
             collection.stream()
-                .map(elem -> ((IHyperlinkStruct)elem).getUri())
+                .map(elem -> ((IHyperlinkStruct) elem).getUri())
                 .collect(Collectors.toList());
       } catch (ClassCastException ex) {
-      	// casting should not be an issue since we're checking it on the if 
+        // casting should not be an issue since we're checking it on the if
         return result;
       }
     }
@@ -160,28 +162,28 @@ public class Utils {
     if (isCollectionLinkedWorkItemStructList(linkedItems)) {
       try {
         List<ILinkedWorkItemStruct> collection = (List<ILinkedWorkItemStruct>) linkedItems;
-        result = collection
-            	.stream()
-              .map(elem -> elem.getLinkedItem().getId())
-              .collect(Collectors.toList());
+        result =
+            collection.stream()
+                .map(elem -> elem.getLinkedItem().getId())
+                .collect(Collectors.toList());
       } catch (ClassCastException ex) {
-      	// casting should not be an issue since we're checking it on the if 
+        // casting should not be an issue since we're checking it on the if
       }
     }
     return result;
   }
 
   public static List<String> castApprovalsToStrList(Collection approvals) {
-  	List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<String>();
     if (isCollectionApprovalStructList(approvals)) {
       try {
-        List<IApprovalStruct> collection = (List<IApprovalStruct>)approvals;
+        List<IApprovalStruct> collection = (List<IApprovalStruct>) approvals;
         result =
             collection.stream()
-                .map(elem -> ((IApprovalStruct)elem).getUser().getId())
+                .map(elem -> ((IApprovalStruct) elem).getUser().getId())
                 .collect(Collectors.toList());
       } catch (ClassCastException ex) {
-      	// casting should not be an issue since we're checking it on the if 
+        // casting should not be an issue since we're checking it on the if
       }
     }
     return result;
@@ -230,20 +232,20 @@ public class Utils {
   }
 
   private static HashMap<String, Object> castCustomFields(
-  	IWorkItem workItem, String[] includeCustomFields) {
+      IWorkItem workItem, String[] includeCustomFields) {
 
-		Set<String> customFields = new HashSet<>(workItem.getCustomFieldsList());
-		Set<String> targetSet = new HashSet<>(Arrays.asList(includeCustomFields));
+    Set<String> customFields = new HashSet<>(workItem.getCustomFieldsList());
+    Set<String> targetSet = new HashSet<>(Arrays.asList(includeCustomFields));
 
-		targetSet.retainAll(customFields);
+    targetSet.retainAll(customFields);
 
-		HashMap<String, Object> converted = new HashMap<String, Object>(targetSet.size());
-		targetSet.forEach(
-						fieldName -> {
-								converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
-						});
+    HashMap<String, Object> converted = new HashMap<String, Object>(targetSet.size());
+    targetSet.forEach(
+        fieldName -> {
+          converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
+        });
 
-		return converted;
+    return converted;
   }
 
   /**
@@ -261,11 +263,11 @@ public class Utils {
     } else if (value instanceof java.util.Date) {
       return ((java.util.Date) value).toInstant().toString();
     } else if (value instanceof DurationTime) {
-    		return ((DurationTime) value).toString();
+      return ((DurationTime) value).toString();
     } else if (value instanceof ILocation) {
-        return ((ILocation) value).getLocationPath();
+      return ((ILocation) value).getLocationPath();
     } else if (value instanceof IModule) {
-          return ((IModule) value).getId();
+      return ((IModule) value).getId();
     } else {
       return value.toString();
     }
@@ -310,5 +312,4 @@ public class Utils {
             })
         .collect(Collectors.toList());
   }
-
 }

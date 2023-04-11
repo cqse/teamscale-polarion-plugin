@@ -3,11 +3,10 @@ package com.teamscale.polarion.plugin.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 
- * This class represents a WorkItem diff for a particular field.
- * The diff is generate by Polarion, while here we encapsulate what we need
- * for Teamscale.
- * */
+/**
+ * This class represents a WorkItem diff for a particular field. The diff is generate by Polarion,
+ * while here we encapsulate what we need for Teamscale.
+ */
 public class WorkItemFieldDiff {
 
   private String fieldName;
@@ -23,7 +22,7 @@ public class WorkItemFieldDiff {
   private List<String> elementsRemoved;
 
   public WorkItemFieldDiff(String fieldName) {
-  	this.fieldName = fieldName;
+    this.fieldName = fieldName;
   }
 
   public String getFieldName() {
@@ -65,17 +64,14 @@ public class WorkItemFieldDiff {
   public void setElementsRemoved(List<String> elementsRemoved) {
     this.elementsRemoved = elementsRemoved;
   }
-  
+
   public void addElementAdded(String elementAdded) {
-  		if (elementsAdded == null)
-  				elementsAdded = new ArrayList<String>();
-  		elementsAdded.add(elementAdded);
+    if (elementsAdded == null) elementsAdded = new ArrayList<String>();
+    elementsAdded.add(elementAdded);
   }
-  
+
   public void addElementRemoved(String elementRemoved) {
-  		if (elementsRemoved == null)
-  				elementsRemoved = new ArrayList<String>(); 		
-  		elementsRemoved.add(elementRemoved);
+    if (elementsRemoved == null) elementsRemoved = new ArrayList<String>();
+    elementsRemoved.add(elementRemoved);
   }
-  
 }

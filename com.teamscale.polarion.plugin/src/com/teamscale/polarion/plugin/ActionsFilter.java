@@ -7,7 +7,6 @@ import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
-import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -18,8 +17,7 @@ public class ActionsFilter extends DoAsFilter implements Filter {
 
   private static final ILogger logger = Logger.getLogger(ActionsFilter.class);
 
-  public void init(FilterConfig fConfig) throws ServletException {
-  }
+  public void init(FilterConfig fConfig) throws ServletException {}
 
   @Override
   public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
@@ -30,28 +28,14 @@ public class ActionsFilter extends DoAsFilter implements Filter {
       if (validatePath(servletReq.getServletPath())) {
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
-        // TODO: Following Else/if for experimenting. Remove!
-      } else if (servletReq.getServletPath().startsWith("/v2") && 
-      				servletReq.getServletPath().endsWith("work-item-updates") && 
-      				servletReq.getServletPath().split("/").length == 6) {
-      		
-          String[] pathParts = servletReq.getServletPath().split("/");
-
-          req.setAttribute("project", pathParts[2]);
-          req.setAttribute("space", pathParts[3]);
-          req.setAttribute("document", pathParts[4]);
-      		servletReq.setAttribute("version", "v2");
-      		chain.doFilter(req, res);
-      }
-      else {
-      	logger.info("[Teamscale Polarion Plugin] 404, Resource not found to be sent.");
+      } else {
+        logger.info("[Teamscale Polarion Plugin] 404, Resource not found to be sent.");
         ((HttpServletResponse) res)
             .sendError(
                 HttpServletResponse.SC_NOT_FOUND, "The requested resource or action is not found");
       }
-    } 
-    else {
-    	logger.info("[Teamscale Polarion Plugin] This service supports only HTTP requests.");
+    } else {
+      logger.info("[Teamscale Polarion Plugin] This service supports only HTTP requests.");
       throw new ServletException("This service supports only HTTP requests.");
     }
   }

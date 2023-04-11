@@ -4,10 +4,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * This class encapsulates a Work Item change (revision) containing
- * the revision number this change represents and a collection of field diffs
- * contained in the revision/change.
- * */
+ * This class encapsulates a Work Item change (revision) containing the revision number this change
+ * represents and a collection of field diffs contained in the revision/change.
+ */
 public class WorkItemChange {
 
   private String revision; // the revision after the change
