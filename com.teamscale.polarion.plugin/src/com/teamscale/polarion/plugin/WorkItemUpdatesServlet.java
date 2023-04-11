@@ -460,10 +460,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    */
   private void collectFieldDiffAsCollection(
       String workItemId, WorkItemChange workItemChange, IFieldDiff fieldDiff) {
+  		
     // Polarion returns unparameterized Collections for these two methods
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
-    if (added != null && added.size() > 0) {
+    if (added != null && !added.isEmpty()) {
       WorkItemFieldDiff fieldChange = null;
       // We check if the collection is hyperlink list first since they're not
       // convertible into IPObjectList. So, we treat them separately.
@@ -501,12 +502,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           fieldChange.setElementsAdded(new ArrayList<String>());
         }
       }
-
       if (fieldChange != null) {
         workItemChange.addFieldChange(fieldChange);
       }
     }
-    if (removed != null && removed.size() > 0) {
+    if (removed != null && !removed.isEmpty()) {
       WorkItemFieldDiff fieldChange = null;
       if (Utils.isCollectionHyperlinkStructList(removed)) {
         fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
@@ -625,7 +625,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     int right = workItemHistory.size() - 1;
     int index = -1;
 
-    // binary search the 'lastUpdate index'
     while (left <= right) {
       int mid = (left + right) / 2;
       if (Integer.valueOf(workItemHistory.get(mid).getRevision()) < lastUpdateInt) {
