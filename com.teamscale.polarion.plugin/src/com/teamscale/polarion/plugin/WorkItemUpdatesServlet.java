@@ -248,7 +248,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     for (IWorkItem workItem : workItems) {
     	WorkItemForJson workItemForJson;
     	// This is because WIs moved to the trash can are still in the Polarion WI table we query
-    	if (wasMovedToRecycleBin(workItem)) {
+    	if (wasMovedToRecycleBin(workItem) && shouldIncludeItemFromRecybleBin(workItem)) {
     			workItemForJson = buildDeletedWorkItemForJson(workItem);
     	} else {
     			workItemForJson =
@@ -328,6 +328,17 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    *  **/
   private boolean wasMovedToRecycleBin(IWorkItem workItem) {
   		return !module.containsWorkItem(workItem);
+  }
+  
+  /** 
+   * Not all items in the recyble bin are supposed to be included in the response.
+   * It'll depend on the request lastUpdate revision and endRevision parameters.
+   * **/
+  private boolean shouldIncludeItemFromRecybleBin(IWorkItem workItem) {
+  		Integer workItemLastRevision = Integer.parseInt(workItem.getLastRevision());
+  		
+  		return (workItemLastRevision > Integer.parseInt(lastUpdate) &&
+  						workItemLastRevision <= Integer.parseInt(endRevision));
   }
   
   /** Create the work item object as DELETED **/

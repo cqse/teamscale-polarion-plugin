@@ -25,6 +25,7 @@ public class WorkItemForJson {
   private String outlineNumber;
   private String plannedEnd; // date-time format
   private String plannedStart; // date-time format
+  private String[] plannedIn;
   private String priority;
   private String remainingEstimate;
   private String resolution;
@@ -145,6 +146,14 @@ public class WorkItemForJson {
 
   public void setPlannedStart(String plannedStart) {
     this.plannedStart = plannedStart;
+  }
+  
+  public String[] getPlannedIn() {
+  		return plannedIn;
+  }
+  
+  public void setPlannedIn(String[] plannedIn) {
+  		this.plannedIn = plannedIn;
   }
 
   public String getPriority() {

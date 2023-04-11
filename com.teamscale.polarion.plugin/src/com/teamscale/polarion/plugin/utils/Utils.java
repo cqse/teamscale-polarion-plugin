@@ -55,6 +55,12 @@ public class Utils {
       workItemForJson.setPlannedEnd(workItem.getPlannedEnd().toInstant().toString());
     if (workItem.getPlannedStart() != null)
       workItemForJson.setPlannedStart(workItem.getPlannedStart().toInstant().toString());
+    if (workItem.getPlannedIn() != null && !workItem.getPlannedIn().isEmpty()) {
+    		workItemForJson.setPlannedIn(
+      		workItem.getPlannedIn().stream()
+      			.map(plan -> plan.getId())
+      			.toArray(size -> new String[size]));
+    }
     if (workItem.getPriority() != null)
       workItemForJson.setPriority(workItem.getPriority().getName());
     if (workItem.getRemainingEstimate() != null)
