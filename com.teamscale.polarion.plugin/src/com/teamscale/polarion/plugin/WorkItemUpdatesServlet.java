@@ -116,7 +116,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       // To prevent SQL injection issues
       // Check if the request params are valid IDs before putting them into the SQL query
       if (validateParameters(projId, spaceId, docId)) {
-        ArrayList<WorkItemForJson> changes = new ArrayList<WorkItemForJson>();
 
         // Resetting these Servlet global maps.
         backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
