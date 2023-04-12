@@ -37,8 +37,7 @@ public class Utils {
   public static WorkItemForJson castWorkItem(
       IWorkItem workItem, String[] includeCustomFields, String[] includeLinkRoles) {
 
-    WorkItemForJson workItemForJson =
-        new WorkItemForJson(workItem.getId(), UpdateType.UPDATED, workItem.getLastRevision());
+    WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId(), UpdateType.UPDATED);
     if (workItem.getRevision() != null) workItemForJson.setRevision(workItem.getRevision());
     if (workItem.getDescription() != null)
       workItemForJson.setDescription(workItem.getDescription().getContent());

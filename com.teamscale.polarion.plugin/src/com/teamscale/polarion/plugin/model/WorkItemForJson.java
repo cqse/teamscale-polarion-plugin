@@ -52,10 +52,9 @@ public class WorkItemForJson {
     this.id = id;
   }
 
-  public WorkItemForJson(String id, Utils.UpdateType updateType, String revision) {
+  public WorkItemForJson(String id, Utils.UpdateType updateType) {
     this.id = id;
     this.updateType = updateType;
-    this.revision = revision;
   }
 
   public String getId() {

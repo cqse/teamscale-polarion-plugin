@@ -31,21 +31,10 @@
 		<servlet-class>com.teamscale.polarion.plugin.WorkItemUpdatesServlet</servlet-class>
 		<load-on-startup>0</load-on-startup>
 	</servlet>	
-	<servlet>
-		<servlet-name>Documents</servlet-name>
-		<display-name>Documents Info</display-name>
-		<description>Compute and return documents info.</description>
-		<servlet-class>com.teamscale.polarion.plugin.DocumentsServlet</servlet-class>
-		<load-on-startup>0</load-on-startup>
-	</servlet>
 	
 	<servlet-mapping>
 		<servlet-name>WorkItemUpdates</servlet-name>
 		<url-pattern>/</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
-		<servlet-name>Documents</servlet-name>
-		<url-pattern>/documents</url-pattern>
 	</servlet-mapping>
 
 	<security-constraint>

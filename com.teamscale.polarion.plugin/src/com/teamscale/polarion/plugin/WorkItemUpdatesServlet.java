@@ -253,14 +253,17 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       } else {
         workItemForJson = processHistory(workItem, dataService);
       }
-      allItemsToSend.put(workItem.getId(), workItemForJson);
+
+      if (workItemForJson != null) {
+        allItemsToSend.put(workItem.getId(), workItemForJson);
+      }
     }
 
     createLinkChangesOppositeEntries();
 
     timeAfter = System.currentTimeMillis();
     logger.info(
-        "[Teamscale Polarion Plugin] Finished processing request results. "
+        "[Teamscale Polarion Plugin] Finished processing request. "
             + "Execution time (ms): "
             + (timeAfter - timeBefore));
   }
@@ -349,23 +352,35 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Create the work item object as DELETED * */
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
-    return new WorkItemForJson(
-        workItem.getId(), Utils.UpdateType.DELETED, workItem.getLastRevision());
+    WorkItemForJson item = new WorkItemForJson(workItem.getId(), Utils.UpdateType.DELETED);
+    // Note: if these items are used as deleted items contained in the recyble bin
+    // And if the module that contains the item changes its ID, this will generate
+    // a change to the item in the recycle bin as well, which will generate a change
+    // in the work item history (even thought the item appeared as DELETED).
+    // So this revision will either be the revision when item was deleted or the
+    // the revision when the module of this item changed its id.
+    item.setRevision(workItem.getLastRevision());
+    return item;
   }
 
   /** Main method that will process the work item history based on the parameters in the request */
   private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
 
-    // No matter what endRevision is, we're always returning the latest version of the WI.
-    // Plus its changes up to the endRevision.
-    WorkItemForJson workItemForJson =
-        Utils.castWorkItem(workItem, includeCustomFields, includeLinkRoles);
+    // Short circuit for performance reasons, don't need to make Polarion fetch history
+    if (Integer.valueOf(workItem.getLastRevision()) <= Integer.valueOf(lastUpdate)) {
+      return null;
+    }
+
+    WorkItemForJson workItemForJson = null;
 
     IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
     if (workItemHistory != null) {
       if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
         // No changes in history when size == 1 (the WI remains as created)
-        workItemForJson.setRevision(workItemHistory.get(0).getRevision());
+        // We then return only if the item was created within the revision boundaries of the request
+        if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= Integer.valueOf(endRevision))
+          workItemForJson =
+              Utils.castWorkItem(workItemHistory.get(0), includeCustomFields, includeLinkRoles);
       } else if (workItemHistory.size() > 1) {
         /**
          * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
@@ -375,19 +390,26 @@ public class WorkItemUpdatesServlet extends HttpServlet {
          */
         int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory);
         IDiffManager diffManager = dataService.getDiffManager();
-        Collection<WorkItemChange> workItemChanges =
-            collectWorkItemChanges(workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
-        // If we want to return the WI version matching the end revision #, we could just
-        // reuse the loop in collectWorkItemChanges that will always stop at the endRevision
-        // or at the last element of the list
-        workItemForJson.setWorkItemChanges(workItemChanges);
-        workItemForJson.setRevision(workItemHistory.get(workItemHistory.size() - 1).getRevision());
+        Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
+        int endIndex =
+            collectWorkItemChanges(
+                workItemChanges, workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
+        // Using the endIndex to return the workItem as in the endRevision # (not necessarily the
+        // latest version of the item)
+        if (endIndex >= 0) {
+          workItemForJson =
+              Utils.castWorkItem(
+                  workItemHistory.get(endIndex), includeCustomFields, includeLinkRoles);
+          workItemForJson.setWorkItemChanges(workItemChanges);
+        }
       } else {
         /**
          * No history. Empty list. From Polarion JavaDoc: "An empty list is returned if the object
          * does not support history retrieval."
          * "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
          */
+        // Since we're grabbing WIs (and they support history retrieval), as far as we can tell from
+        // Polarion docs, this else will never execute.
       }
     }
     return workItemForJson;
@@ -395,26 +417,31 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /**
    * Helper method that will collect work item changes (WorkItemChange) based on the diff of each
-   * pair of work item versions in a given work item history.
+   * pair of work item versions in a given work item history and then returns the index of the last
+   * workItem in the history (considering the endRevision request parameter)
    */
-  private Collection<WorkItemChange> collectWorkItemChanges(
+  private int collectWorkItemChanges(
+      Collection<WorkItemChange> workItemChanges,
       String workItemId,
       List<IWorkItem> workItemHistory,
       IDiffManager diffManager,
       int lastUpdateIndex) {
-    Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
 
-    // Short circuit: no changes to look for
-    // This would happen when the lastUpdate request parameter is greater than the latest revision #
-    if (lastUpdateIndex < 0) return workItemChanges;
+    /**
+     * Short circuit: no changes to look for. Defensive code, just in case, since we're already
+     * checking requested revision numbers here @{link #processRevisionNumbers()} *
+     */
+    if (lastUpdateIndex < 0) return -1;
+
+    Integer lastUpdateInt = Integer.valueOf(lastUpdate);
+    Integer endRevisionInt = Integer.valueOf(endRevision);
 
     int index = lastUpdateIndex;
     int next = index + 1;
     while (next < workItemHistory.size()
-        && Integer.valueOf(workItemHistory.get(next).getRevision())
-            <= Integer.valueOf(endRevision)) {
+        && Integer.valueOf(workItemHistory.get(next).getRevision()) <= endRevisionInt) {
 
-      if (Integer.valueOf(workItemHistory.get(next).getRevision()) > Integer.valueOf(lastUpdate)) {
+      if (Integer.valueOf(workItemHistory.get(next).getRevision()) > lastUpdateInt) {
         IFieldDiff[] fieldDiffs =
             diffManager.generateDiff(
                 workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
@@ -427,7 +454,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       index++;
       next++;
     }
-    return workItemChanges;
+    return index;
   }
 
   /**
@@ -608,18 +635,23 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Binary search to cut down the search space since the list is ordered in ascending order* */
   private int searchIndexWorkItemHistory(IPObjectList<IWorkItem> workItemHistory) {
+
+    if (workItemHistory == null) return -1;
+
     Integer lastUpdateInt = Integer.valueOf(lastUpdate);
+    Integer endRevisionInt = Integer.valueOf(endRevision);
+    Integer lastItemRevision =
+        Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
+    Integer firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
+
     // Short circuit: don't need to binarysearch if you're looking for all history
     if (lastUpdateInt <= 0) return 0;
 
-    // Short circuit: don't need to search if lastUpdate already points to the last version of the
-    // item
-    if (Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision())
-        == lastUpdateInt) return workItemHistory.size() - 1;
+    // Short circuit: don't need to search if lastUpdate points to the last version of the item
+    if (lastItemRevision == lastUpdateInt) return workItemHistory.size() - 1;
 
-    // Short circuit: don't need to search if all the changes are before lastUpdate
-    if (Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision())
-        < lastUpdateInt) return -1;
+    // Short circuit: don't search if all changes are before lastUpdate or after endRevision
+    if (lastItemRevision < lastUpdateInt || firstItemVersion > endRevisionInt) return -1;
 
     int left = 0;
     int right = workItemHistory.size() - 1;
@@ -630,11 +662,21 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       if (Integer.valueOf(workItemHistory.get(mid).getRevision()) < lastUpdateInt) {
         left = mid + 1;
       } else if (Integer.valueOf(workItemHistory.get(mid).getRevision()) == lastUpdateInt) {
+        // When all changes came after the lastUpdate and endRevision
+        if (firstItemVersion == Integer.valueOf(workItemHistory.get(mid).getRevision())) {
+          return -1;
+        }
         return mid;
       } else {
         index = mid;
         right = mid - 1;
       }
+    }
+
+    // When the item changed before lastUpdate and afterEndRevision
+    if (Integer.valueOf(workItemHistory.get(index).getRevision()) < lastUpdateInt
+        || Integer.valueOf(workItemHistory.get(index).getRevision()) > endRevisionInt) {
+      return -1;
     }
 
     return (index == 0 ? index : index - 1);
