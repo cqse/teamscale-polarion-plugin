@@ -29,3 +29,20 @@ We are following the Java coding style guidelines from Google.
 And we use [this opensource tool](https://github.com/google/google-java-format) from Google locally in the dev workstation.
 
 Also, we set up [this GitHub action](https://github.com/axel-op/googlejavaformat-action) to auto format the pushed code if need.
+
+## Test Cases
+
+The plugin implementation is tightly coupled with the Polarion data model and database, which makes the testability of the plugin really difficult. Automated tests would require a significant effort, so it's a TBD for now.
+
+Here some key test cases that we can do manually until we can automate them.
+
+### WorkItemTypes
+ - Input: includedWorkItemTypes=testcase
+ - Expected behavior/output: The json output should include items of only that type
+ 
+### CustomFields
+ - Input: includedWorkItemCustomFields=testCaseID&includedWorkItemCustomFields=testType
+ - Expected behavior/output: All work items included in the response should contain those two custom fields if the custom fields passed in the request are valid custom field Ids.
+ 
+
+ 
