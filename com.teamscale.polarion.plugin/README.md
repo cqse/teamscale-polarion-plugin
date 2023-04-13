@@ -42,7 +42,8 @@ Here some key test cases that we can do manually until we can automate them.
  
 ### CustomFields
  - Input: includedWorkItemCustomFields=testCaseID&includedWorkItemCustomFields=testType
- - Expected behavior/output: All work items included in the response should contain those two custom fields if the custom fields passed in the request are valid custom field Ids.
+ - Expected behavior/output: All work items included in the response shall contain those two custom fields if the custom fields passed in the request are valid custom field Ids.
  
-
- 
+### LinkRoles
+ - Input: includedWorkItemLinkRoles=parent&includedWorkItemLinkRoles=verifies
+ - Expected behavior/output: For all the work items included in the result, there should be a field called linkedWorkItems that maps to an array. Each element of that array should contain two fields: the id of the work item it's linked to; and the linkRoleId that represents the link type (e.g., parent, verifies). Besides, all the work item changes related to links added/removed in the workItemChanges field should contain only links of those two types passed in the request (e.g., parent, verifies). Even if the work items were changed by adding/removing links of other types in the revision limits passed in the request, those changes should not show up in the response.
