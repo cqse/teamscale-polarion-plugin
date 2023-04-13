@@ -20,6 +20,7 @@ import com.polarion.platform.service.repository.AccessDeniedException;
 import com.teamscale.polarion.plugin.model.LinkBundle;
 import com.teamscale.polarion.plugin.model.LinkFieldDiff;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
+import com.teamscale.polarion.plugin.model.Response;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
@@ -121,8 +122,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
         allItemsToSend = new HashMap<String, WorkItemForJson>();
 
-        retrieveChanges(projId, spaceId, docId);
-        sendResponse(res);
+        Collection<String> allValidItemsLatest = retrieveChanges(projId, spaceId, docId);
+        sendResponse(res, allValidItemsLatest);
 
         logger.info("[Teamscale Polarion Plugin] Successful response sent");
       } else {
@@ -169,9 +170,15 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return (Integer.valueOf(lastUpdate) < Integer.valueOf(endRevision));
   }
 
-  private void sendResponse(HttpServletResponse resp) throws ServletException, IOException {
+  private void sendResponse(HttpServletResponse resp, Collection<String> allValidItems)
+      throws ServletException, IOException {
     Gson gson = new Gson();
-    String jsonResult = gson.toJson(allItemsToSend.values());
+
+    Response response = new Response();
+    response.setAllWorkItemsForJson(allItemsToSend.values());
+    response.setAllItemsIds(allValidItems);
+
+    String jsonResult = gson.toJson(response);
     resp.setContentType("application/json");
     PrintWriter out = resp.getWriter();
     out.print(jsonResult);
@@ -185,7 +192,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     sqlQuery.append("where P.C_ID = '" + projId + "'");
     sqlQuery.append(" and M.C_ID = '" + docId + "'");
     sqlQuery.append(" and M.C_MODULEFOLDER = '" + spaceId + "'");
-    sqlQuery.append(" and WI.C_REV > " + lastUpdate);
     sqlQuery.append(generateWorkItemTypesAndClause());
 
     return sqlQuery.toString();
@@ -227,11 +233,18 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return false;
   }
 
-  private void retrieveChanges(String projId, String spaceId, String docId) {
+  /**
+   * This method runs the SQL query and starts processing all the work items returned from the
+   * query. Additionally, it returns all work item Ids that are valid in the database at the moment
+   * (after lastUpdate). That return will be use to pass this list of Ids to the response. *
+   */
+  private Collection<String> retrieveChanges(String projId, String spaceId, String docId) {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
 
     IDataService dataService = trackerService.getDataService();
+
+    Collection<String> allValidsItemsLatest = new ArrayList<String>();
 
     long timeBefore = System.currentTimeMillis();
 
@@ -245,17 +258,25 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     timeBefore = System.currentTimeMillis();
 
     for (IWorkItem workItem : workItems) {
-      WorkItemForJson workItemForJson;
-      // This is because WIs moved to the trash can are still in the Polarion WI table we query
-      if (wasMovedToRecycleBin(workItem) && shouldIncludeItemFromRecybleBin(workItem)) {
-        workItemForJson = buildDeletedWorkItemForJson(workItem);
-      } else {
-        workItemForJson = processHistory(workItem, dataService);
-      }
 
-      if (workItemForJson != null) {
-        allItemsToSend.put(workItem.getId(), workItemForJson);
+      // Only check history if there were changes after lastUpdate
+      if (Integer.valueOf(workItem.getLastRevision()) > Integer.valueOf(lastUpdate)) {
+
+        WorkItemForJson workItemForJson;
+
+        // This is because WIs moved to the trash can are still in the Polarion WI table we query
+        if (wasMovedToRecycleBin(workItem) && shouldIncludeItemFromRecybleBin(workItem)) {
+          workItemForJson = buildDeletedWorkItemForJson(workItem);
+        } else {
+          workItemForJson = processHistory(workItem, dataService);
+        }
+
+        if (workItemForJson != null) {
+          allItemsToSend.put(workItem.getId(), workItemForJson);
+        }
       }
+      // Regardless, add item to the response so the client can do the diff to check for deletions
+      allValidsItemsLatest.add(workItem.getId());
     }
 
     createLinkChangesOppositeEntries();
@@ -265,6 +286,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         "[Teamscale Polarion Plugin] Finished processing request. "
             + "Execution time (ms): "
             + (timeAfter - timeBefore));
+
+    return allValidsItemsLatest;
   }
 
   /** This method will create the WI changes on the opposite side of the link changes * */

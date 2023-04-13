@@ -7,6 +7,14 @@ Other useful Polarion documentation:
  - [Java API](https://almdemo.polarion.com/polarion/sdk/doc/javadoc/index.html)
  - [Database](https://almdemo.polarion.com/polarion/sdk/doc/database/index.html)
 
+## How to install the plugin
+
+TODO
+
+## How to build the dev environment
+
+TODO
+
 ## Assumptions and Design Decisions
 
 TODO
