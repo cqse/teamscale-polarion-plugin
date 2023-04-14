@@ -9,13 +9,23 @@ Other useful Polarion documentation:
 
 ## How to install the plugin
 
-TODO
+First of all, the plugin needs to be deployed in an existing Polarion instance. It is out of the scope of this documentation to provide instructions on how to install Polarion.
 
-## How to build the dev environment
+Once Polarion is installed and running properly, see Section 4.4 (Deployment to Installed Polarion) in this [Polarion SDK documentation](https://almdemo.polarion.com/polarion/sdk/doc/sdk.pdf).
+Basically, the plugin jar file needs to be dropped in a specific Polarion plugins folder depending on your installation (e.g., /opt/polarion/polarion/plugins). If Polarion is already running when you drop the plugin jar, restarting the instance is necessary.
 
-TODO
+Important note from Polarion documentation: "Servlets loaded by Polarion are cached in: [Polarion_Home]\data\workspace\.config. If this folder is not deleted before deploying a
+servlet extension (plugin) and restarting Polarion, then either the servlets will not be properly loaded, or the old ones will be loaded." In our experience, we did not have to manually delete the .config file, but keep that in mind if you need to debug odd behavior related to Polarion not picking up the right plugin version.
 
-## Assumptions, Design Decisions, or Design Implications Inherited from Polarion
+## How to build the dev environment and run the Plugin in dev/debug mode
+
+See Section 4.3 (Workspace Preparation) in this [Polarion SDK documentation](https://almdemo.polarion.com/polarion/sdk/doc/sdk.pdf).
+
+Once the project is successfuly configured and building, follow instructions on Section 4.5 (Execution from Workspace).
+
+With that, you can run the local Polarion instance with the plugin deployed, and use it for debugging and development purposes.
+
+## Assumptions, Design Decisions, and Design Implications Inherited from Polarion
 
 **Request path parameters:**
  
@@ -39,6 +49,15 @@ All optional
  - sequential and always positive
  - they grow by 1 for every change 
  - (note: in some cases multiple changes are mapped to a single revision number, for instance, when you change multiple work item fields at once in a single save).
+
+**Items moved to the recycle bin (soft deletion):** In Polarion, users can soft delete items by moving them to the [recycle bin](https://docs.plm.automation.siemens.com/content/polarion/19.3/help/en_US/user_and_administration_help/user_guide/work_with_documents/work_items_in_documents/work_item_recycle_bin.html). These items do not show up in documents (only if you open the recycle bin UI) but they're still valid items when we query the work item table in Polarion database (and consequently they're still related to the document in the database). As of now, the plugin only detects work item deletion if items are in the recycle bin. For [hard deletions](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/user_guide/work_items/work_item_actions/delete_work_items.html), the plugin is not currently able to detectem them. See next.
+
+**Items deleted permanently:** We have not found a way to query [permanently deleted items](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/user_guide/work_items/work_item_actions/delete_work_items.html) utilizing the Polarion Java API. Therefore, the current solution is to leave that job to the client side. For that reason, every response the plugin sends back to the client contains a list of all work item ids that are valid (not deleted) at the moment. On the client side, applications can build some logic around that. For instance:
+ - Client builds a set (A) of item ids known to the client before request
+ - Client sends request and takes the set (B) of all item ids returned in the response field 'allItemsIds' (all items not deleted at the moment)
+ - Client performs diff (A) - (B). If the result is empty, no items were deleted.
+   - If the result is not empty, the remaining items are the deleted items since lastUpdate revision. 
+   - Note that (B) can have more items than (A) if new items were created since lastUpdate revision.
 
 TODO (there's much more to document here...)
 
