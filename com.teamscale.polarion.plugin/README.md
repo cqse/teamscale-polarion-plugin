@@ -52,7 +52,7 @@ All optional
 
 **Dealing with work item links:** Work Item links deserve some special attention. [Links can be configured](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/administrators_guide/configure_work_items/configure_work_item_linking.html) in different ways in diffent projects. Therefore, user facing link names may differ from project to project. Also, in Polarion, links are bi-directional. So if A links B, B also links A. For instance, for the parent-child link, if A _has-parent_ B, B _is-parent-of_ A. Note the _forward_ and _backward_ link names are different even though they are the same _link role_. Therefore, Polarion will tight different user-facing link names under the same link role id (in this example the link role id is _parent_). The plugin will always refer to links by its id. Therefore, in the json output the plugin generates, A would contain a link identified as _parent_ and so would B (even thouth in the Polarion document and work item UIs, they would display as _has-parent_ or _is-parent-of_).
 
-**Work item link changes:** Polarion does not generate a change/field diff for the opposite end of the link (the backward link). Still, this an interesting information to clients, so they can act upon link changes (since both ends are interfeered). Therefore, the plugin creates those field diffs for the backward links on top of what Polarion returns as changes for the forward links. In the example above, Polarion returns a field diff representing A links B (using the _parent_ link role), besides creating a change that represent that link from A to B, the plugin also creates a change (on the json output only, not in Polarion database) to represent a work item change in B (as B also links A via the _parent_ role).
+**Work item link changes:** Polarion does not generate a change/field diff for the opposite end of the link (the backward link). Still, this an interesting information to clients, so they can act upon link changes (since both ends are interfeered). Therefore, the plugin creates those field diffs for the backward links on top of what Polarion returns as changes for the forward links. In the example above, Polarion returns a field diff representing A links B (using the _parent_ link role), besides creating a change that represents that link from A to B, the plugin also creates a change (on the json output only, not in Polarion database) to represent a work item change in B (as B also links A via the _parent_ role).
 
 **Items moved to the recycle bin (soft deletion):** In Polarion, users can soft delete items by moving them to the [recycle bin](https://docs.plm.automation.siemens.com/content/polarion/19.3/help/en_US/user_and_administration_help/user_guide/work_with_documents/work_items_in_documents/work_item_recycle_bin.html). These items do not show up in documents (only if you open the recycle bin UI) but they're still valid items when we query the work item table in Polarion database (and consequently they're still related to the document in the database). As of now, the plugin only detects work item deletion if items are in the recycle bin. For [hard deletions](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/user_guide/work_items/work_item_actions/delete_work_items.html), the plugin is not currently able to detectem them. See next.
 
@@ -126,12 +126,18 @@ Here some key test cases that we can do manually until we can automate them.
 ### Using both the lastUpdate and endRevisionquery parameters in combination with links changed after endRevision
 
   - **Input:** lastUpdate=10&endRevision=20
-  - **Expected behavior/output:** If links were added/removed after the endRevision those changes (like any other change) should not be part of the request/response scope. The response shall contain work items that were created or changed **after** revision 10 and **up to** (including) revision 20 without links added/removed after endRevision (since that represent their state up to revision 20).
+  - **Expected behavior/output:** If links were added/removed after the endRevision those changes, like any other changes, should not be part of the request/response scope. The response shall contain work items that were created or changed **after** revision 10 and **up to** (including) revision 20 without links added/removed after endRevision (since that represent their state up to revision 20).
  
 ### WorkItem Deletion as Moved to the Recycle Bin
  
- TODO
+  - **Input:** lastUpdate=10&endRevision=20
+  - **Expected behavior/output:** If an item was moved to the recycle bin on revision 10 or earlier, then it should not be part of the response at all (in any state). If an item was moved to the recycle bin after revision 20, then it should not show as deleted and its changes (if there are changes) should be included in the response. If an item was moved to the recycle bin after revision 10 and up to revision 20 (including), then it should be part of the response and its updateType field should have the value DELETED along with the revision number when it was moved to the recyble bin. Note: Items in the recycle bin can still undergo changes. For instance, if any of their field values change, or their links, or even if their module changes id, it'll generate a new revision and changes will be tracked by Polarion. Therefore, the revision number showing in a DELETED item will either be the revision when item was moved to the recycle bin or the revision when item was lastly changed while in the recycle bin.
  
+### WorkItem in the Recycle Bin is moved back to document
+ 
+  - **Input:** lastUpdate=10&endRevision=20
+  - **Expected behavior/output:** TODO
+  
 ### WorkItem Deletion (Permament)
  
 TODO
