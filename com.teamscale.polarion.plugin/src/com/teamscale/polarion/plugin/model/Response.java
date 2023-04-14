@@ -12,7 +12,7 @@ public class Response {
   Collection<WorkItemForJson> workItems;
 
   /* Clients can detected deleted items by running a diff as follows:
-   * 1) build a set (A) of items know to the client before request
+   * 1) build a set (A) of items known to the client before request
    * 2) Request and take the set of items (B) returned in the response field 'allItemsIds'
    * 3) Perform (A) - (B). If the result is empty, no items were deleted.
    * If the result is not empty, the remaining items are the deleted items since
