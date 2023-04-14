@@ -138,12 +138,10 @@ Here some key test cases that we can do manually until we can automate them.
   - **Input:** lastUpdate=10&endRevision=20
   - **Expected behavior/output:** TODO
   
-### WorkItem Deletion (Permament)
+### WorkItem Deletion (Permamently)
  
-TODO
- 
-### WorkItem Deletion (Permament) when deletion happened after endRevision
- 
-TODO
+  - **Input:** lastUpdate=10&endRevision=20
+  - **Expected behavior/output:** Regardless when items are deleted permanently, the response shall contain only existing items. If an item was deleted at any revision number, no matter the revision parameters are passed in the request, deleted items history is never visible, so we cannot query and return them in the response.
+
  
 Please suggest other corner cases...
