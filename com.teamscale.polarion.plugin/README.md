@@ -82,13 +82,20 @@ Here some key test cases that we can do manually until we can automate them.
  - **Expected behavior/output:** The response shall contain work items that were created or changed **after** revision 1 (note that doesn't include revision 1). Each work item that changed after revision 1 should contain in its field named workItemChanges an array containing its changes grouped by revision number in ascending order. For each revision, there should be an array of field changes (since it's possible to change multiple fields at once in some cases). Each element of such field change array shall contain the fieldName (which is unique) and the values before/after (if it's a simpple field) or values added/removed (if it's a collection field). If there are no changes after revision 1, then we should see an empty json object in the response. Additionally, the response should include a list of all work item ids currently valid (not deleted) at the latest revision for deletion check on the client side. 
  
 ### Using the endRevision query parameter
-
- TODO
+ - **Input:** endRevision=10
+ - **Expected behavior/output:** The response shall contain work items that were created or changed **up to** revision 10. Each work item that changed up to revision 10 should contain in its field named workItemChanges an array containing its changes grouped by revision number in ascending order. For each revision, there should be an array of field changes (since it's possible to change multiple fields at once in some cases). Each element of such field change array shall contain the fieldName (which is unique) and the values before/after (if it's a simpple field) or values added/removed (if it's a collection field). If there are no changes after revision 1, then we should see an empty json object in the response. Additionally, the response should include a list of all work item ids currently valid (not deleted) at the latest revision for deletion check on the client side. 
+ 
  
 ### Using both the lastUpdate and endRevisionquery parameters
-
- TODO
+ - **Input:** lastUpdate=10&endRevision=10
+ - **Expected behavior/output:** The response should be a 404. endRevision should be greater than lastUpdate.
  
+ - **Input:** lastUpdate=50&endRevision=10
+ - **Expected behavior/output:** The response should be a 404. endRevision should be greater than lastUpdate.
+ 
+  - **Input:** lastUpdate=10&endRevision=20
+  - **Expected behavior/output:** The response shall contain work items that were created or changed **after** revision 10 and **up to** (including) revision 20. The workItemChanges field should also only include changes that happened in revisions after 10 up to 20 (including). Note: work items that changed before lastUpdate and after endRevision, even though they're valid (not deleted) work items, they should not show up in the response. Additionally, regardless of the revision parameters, the response should include a list of all work item ids currently valid (not deleted) at the latest revision for deletion check on the client side. 
+
 ### Using both the lastUpdate and endRevisionquery parameters in combination with a link changed after endRevision
 
  TODO
@@ -106,6 +113,10 @@ Here some key test cases that we can do manually until we can automate them.
 TODO
  
 ### WorkItem Deletion (Permament) when deletion happened after endRevision
+ 
+TODO
+ 
+### Link changes
  
 TODO
  
