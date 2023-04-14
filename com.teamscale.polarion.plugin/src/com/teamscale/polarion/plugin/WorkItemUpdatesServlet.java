@@ -375,12 +375,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   /** Create the work item object as DELETED * */
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
     WorkItemForJson item = new WorkItemForJson(workItem.getId(), Utils.UpdateType.DELETED);
-    // Note: if these items are used as deleted items contained in the recyble bin
-    // And if the module that contains the item changes its ID, this will generate
-    // a change to the item in the recycle bin as well, which will generate a change
-    // in the work item history (even thought the item appeared as DELETED).
-    // So this revision will either be the revision when item was deleted or the
-    // the revision when the module of this item changed its id.
+    // Note: Items in the recycle bin can still undergo changes. For instance, if
+    // any of their field values change, or their links, or even if their module changes id,
+    // it'll generate a new revision and changes will be tracked by Polarion.
+    // Therefore, the following revision will either be the revision when item was deleted or the
+    // the revision when item was lastly changed while in the recycle bin.
     item.setRevision(workItem.getLastRevision());
     return item;
   }
