@@ -136,7 +136,7 @@ Here some key test cases that we can do manually until we can automate them.
 ### WorkItem in the Recycle Bin is moved back to document
  
   - **Input:** lastUpdate=10&endRevision=20
-  - **Expected behavior/output:** TODO
+  - **Expected behavior/output:** When an item moves to recycle bin, it does not generate an item history change. Therefore, the expected output should be all item changes between revisions 10 and 20 (including if changes happened while the item was in the recycle bin). If the item was moved back to the document from recycle bin after revision 20, then the response should show the item and its field values as of revision 20 (along with all changes that happened in its fields between revisions 10 and 20). Since the item is not currently in the recycle bin, and since Polarion does not generate a work item history change when items are moved to the recycle bin, even though the item was in the recycle bin in the requested revision window, the output will not show the item went to the recycle bin and back at some point. If this is required by the client, it needs to be tracked on the client side, currently.
   
 ### WorkItem Deletion (Permamently)
  
