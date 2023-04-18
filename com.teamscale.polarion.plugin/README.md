@@ -43,12 +43,12 @@ All optional
  - includedWorkItemCustomFields: List of work item custom fields that should be included in the result. If empty, no custom fields should be present.
  - includedWorkItemLinkRoles: List of possible work item link role Ids that should be included in the result. If empty, no work item links should be included.
 
-**Revision numbers:** In Polarion, revision numbers are:
- - global and unique across projects of the same Polarion instance/installation
- - controlled by an embedded SVN engine
- - sequential and always positive
- - they grow by 1 for every change 
- - (note: in some cases multiple changes are mapped to a single revision number, for instance, when you change multiple work item fields at once in a single save).
+**Revision numbers:** In Polarion, changes on documents and work items are version-controled by and embedded SVN engine. Therefore:
+ - revision numbers are global and unique across projects of the same Polarion instance/installation
+ - revision numbers are sequential and always positive
+ - revision numbers are unique and grow by 1 for every change (aka transaction in SVN lingo)
+   - note: in some cases multiple changes are mapped to a single revision number, for instance, when you change multiple work item fields at once in a single save.
+ - More info about [SVN revision numbers](https://svnbook.red-bean.com/en/1.7/svn-book.html#svn.basic.in-action.revs)
 
 **Dealing with work item links:** Work Item links deserve some special attention. [Links can be configured](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/administrators_guide/configure_work_items/configure_work_item_linking.html) in different ways in diffent projects. Therefore, user facing link names may differ from project to project. Also, in Polarion, links are bi-directional. So if A links B, B also links A. For instance, for the parent-child link, if A _has-parent_ B, B _is-parent-of_ A. Note the _forward_ and _backward_ link names are different even though they are the same _link role_. Therefore, Polarion will tight different user-facing link names under the same link role id (in this example the link role id is _parent_). The plugin will always refer to links by its id. Therefore, in the json output the plugin generates, A would contain a link identified as _parent_ and so would B (even thouth in the Polarion document and work item UIs, they would display as _has-parent_ or _is-parent-of_).
 
