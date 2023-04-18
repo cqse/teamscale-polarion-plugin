@@ -63,7 +63,8 @@ All optional
    - If the result is not empty, the remaining items are the deleted items since lastUpdate revision. 
    - Note that (B) can have more items than (A) if new items were created since lastUpdate revision.
 
-TODO (there's much more to document here...)
+**Thread Safety:**
+The solution is thread safe. This Polarion plugin is implemented as a Java Servlet. Polarion utilizes the Apache Tomcat web container to run servlets. The Tomcat web container follows a multi-thread model, meaning that it creates a new thread per request directed to a any given servlet. Besides that, in the plugin, we do not utilize any shared data structures across different servlets from Polarion. Each request to the plugin servlet will run in a separate thread, which will query the database independently and work in its own data in memory.
 
 ## JSON Serialization
 We currently use the opensource library [Gson](https://github.com/google/gson) which already comes available in the Polarion installation.
