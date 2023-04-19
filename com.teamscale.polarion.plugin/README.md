@@ -37,8 +37,8 @@ With that, you can run the local Polarion instance with the plugin deployed, and
 **Request query parameters:**
 
 All optional
- - lastUpdate: revision number that indicates the last update known by the client, so the server should look for changes after that.
- - endRevision: revision number that indicates the end revision this request should look for. All changes up to that revision (included).
+ - lastUpdate: revision number that indicates the last update known by the client, so the server should look for changes after that. If not included in the request the server will consider changes after revision 0.
+ - endRevision: revision number that indicates the end revision the server should look for. All changes up to that revision (included). If not included in the request the server will consider changes up to the latest revision.
  - includedWorkItemTypes: List of possible work item types to be included in the result. If empty, all items of all types should be included.
  - includedWorkItemCustomFields: List of work item custom fields that should be included in the result. If empty, no custom fields should be present.
  - includedWorkItemLinkRoles: List of possible work item link role Ids that should be included in the result. If empty, no work item links should be included.
