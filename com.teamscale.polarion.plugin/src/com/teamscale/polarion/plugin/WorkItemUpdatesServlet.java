@@ -3,6 +3,7 @@ package com.teamscale.polarion.plugin;
 import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
+import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
@@ -310,7 +311,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                     fieldChangeEntry =
                         new LinkFieldDiff(
                             Utils.LINKED_WORK_ITEMS_FIELD_NAME,
-                            linkBundle.getLinkedWorkItem().getLinkRoleId());
+                            linkBundle.getLinkedWorkItem().getLinkRoleId(),
+                            linkBundle.getLinkedWorkItem().getLinkRoleName());
                     workItemChange.addFieldChange(fieldChangeEntry);
                   }
                   if (linkBundle.isAdded()) {
@@ -527,10 +529,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         String linkRoleId = ((ILinkedWorkItemStruct) added.iterator().next()).getLinkRole().getId();
         if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)
             && fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
+          ILinkRoleOpt linkRole = ((ILinkedWorkItemStruct) added.iterator().next()).getLinkRole();
           fieldChange =
-              new LinkFieldDiff(
-                  fieldDiff.getFieldName(),
-                  ((ILinkedWorkItemStruct) added.iterator().next()).getLinkRole().getId());
+              new LinkFieldDiff(fieldDiff.getFieldName(), linkRole.getId(), linkRole.getName());
           fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrList(added));
           updateOppositeLinksMap(workItemId, workItemChange.getRevision(), added, true);
         }
@@ -564,10 +565,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
             ((ILinkedWorkItemStruct) removed.iterator().next()).getLinkRole().getId();
         if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)
             && fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
+          ILinkRoleOpt linkRole = ((ILinkedWorkItemStruct) removed.iterator().next()).getLinkRole();
           fieldChange =
-              new LinkFieldDiff(
-                  fieldDiff.getFieldName(),
-                  ((ILinkedWorkItemStruct) removed.iterator().next()).getLinkRole().getId());
+              new LinkFieldDiff(fieldDiff.getFieldName(), linkRole.getId(), linkRole.getName());
           fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrList(removed));
           updateOppositeLinksMap(workItemId, workItemChange.getRevision(), removed, false);
         }
@@ -616,7 +616,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         reverse = new LinkBundle();
         reverse.setAdded(added);
         reverse.setRevision(revision);
-        reverse.setLinkedWorkItem(new LinkedWorkItem(workItemId, linkStruct.getLinkRole().getId()));
+        reverse.setLinkedWorkItem(
+            new LinkedWorkItem(
+                workItemId, linkStruct.getLinkRole().getId(), linkStruct.getLinkRole().getName()));
         List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
         newLinkBundles.add(reverse);
         backwardLinksTobeAdded.put(linkStruct.getLinkedItem().getId(), newLinkBundles);
@@ -626,7 +628,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           reverse.setAdded(added);
           reverse.setRevision(revision);
           reverse.setLinkedWorkItem(
-              new LinkedWorkItem(workItemId, linkStruct.getLinkRole().getId()));
+              new LinkedWorkItem(
+                  workItemId,
+                  linkStruct.getLinkRole().getId(),
+                  linkStruct.getLinkRole().getName()));
           linkBundles.add(reverse);
         }
       }

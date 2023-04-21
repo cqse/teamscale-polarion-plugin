@@ -114,7 +114,9 @@ public class Utils {
               .map(
                   linkStruct ->
                       new LinkedWorkItem(
-                          linkStruct.getLinkedItem().getId(), linkStruct.getLinkRole().getId()))
+                          linkStruct.getLinkedItem().getId(),
+                          linkStruct.getLinkRole().getId(),
+                          linkStruct.getLinkRole().getName()))
               .collect(Collectors.toSet());
 
       Set<LinkedWorkItem> linksDirectSet =
@@ -125,7 +127,9 @@ public class Utils {
               .map(
                   linkStruct ->
                       new LinkedWorkItem(
-                          linkStruct.getLinkedItem().getId(), linkStruct.getLinkRole().getId()))
+                          linkStruct.getLinkedItem().getId(),
+                          linkStruct.getLinkRole().getId(),
+                          linkStruct.getLinkRole().getName()))
               .collect(Collectors.toSet());
 
       if (!linksDirectSet.isEmpty() || !linksBackSet.isEmpty()) {

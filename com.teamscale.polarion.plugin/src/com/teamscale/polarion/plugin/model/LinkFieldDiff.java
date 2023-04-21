@@ -9,10 +9,12 @@ package com.teamscale.polarion.plugin.model;
 public class LinkFieldDiff extends WorkItemFieldDiff {
 
   private String linkRoleId;
+  private String linkRoleName;
 
-  public LinkFieldDiff(String fieldName, String linkRoleId) {
+  public LinkFieldDiff(String fieldName, String linkRoleId, String linkRoleName) {
     super(fieldName);
     this.linkRoleId = linkRoleId;
+    this.linkRoleName = linkRoleName;
   }
 
   public void setLinkRoleId(String linkRoleId) {
@@ -21,5 +23,13 @@ public class LinkFieldDiff extends WorkItemFieldDiff {
 
   public String getLinkRoleId() {
     return linkRoleId;
+  }
+
+  public void setLinkRoleName(String linkRoleName) {
+    this.linkRoleName = linkRoleName;
+  }
+
+  public String getLinkRoleName() {
+    return linkRoleName;
   }
 }
