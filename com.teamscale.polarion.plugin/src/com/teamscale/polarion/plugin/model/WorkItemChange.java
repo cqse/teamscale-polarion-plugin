@@ -29,6 +29,10 @@ public class WorkItemChange {
     fieldChanges.add(fieldChange);
   }
 
+  public void addFieldChanges(Collection<WorkItemFieldDiff> fieldChanges) {
+    this.fieldChanges.addAll(fieldChanges);
+  }
+
   public Collection<WorkItemFieldDiff> getFieldChanges() {
     return fieldChanges;
   }

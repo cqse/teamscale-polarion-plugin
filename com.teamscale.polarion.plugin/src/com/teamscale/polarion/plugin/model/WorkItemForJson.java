@@ -34,16 +34,16 @@ public class WorkItemForJson {
   private String title;
   private String type;
   private String updated; // date-time format
+  private String moduleId;
+  private String moduleTitle;
+  private String projectId;
   private HashMap<String, Object> customFields;
   private List<String> assignees;
   private List<String> attachments;
   private String author;
   private List<String> categories;
   private String[] comments;
-  private LinkedWorkItem[] linkedWorkItems; // All links (in and out links)
-  private String moduleId;
-  private String moduleTitle;
-  private String projectId;
+  private List<LinkedWorkItem> linkedWorkItems; // All links (in and out links)
   private List<String> watchers;
 
   private Collection<WorkItemChange> workItemChanges;
@@ -281,12 +281,20 @@ public class WorkItemForJson {
     this.comments = comments;
   }
 
-  public LinkedWorkItem[] getLinkedWorkItems() {
+  public List<LinkedWorkItem> getLinkedWorkItems() {
     return linkedWorkItems;
   }
 
-  public void setLinkedWorkItems(LinkedWorkItem[] linkedWorkItems) {
+  public void setLinkedWorkItems(List<LinkedWorkItem> linkedWorkItems) {
     this.linkedWorkItems = linkedWorkItems;
+  }
+
+  public void addAllLinkedWorkItems(List<LinkedWorkItem> linkedWorkItems) {
+    if (linkedWorkItems == null) {
+      this.linkedWorkItems = linkedWorkItems;
+    } else {
+      this.linkedWorkItems.addAll(linkedWorkItems);
+    }
   }
 
   public String getModuleId() {

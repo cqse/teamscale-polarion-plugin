@@ -85,6 +85,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   // the work items opposite link changes.
   private Map<String, WorkItemForJson> allItemsToSend;
 
+  // This is used to keep a map of linkRoleIds to its in/out link names
+  private Map<String, ILinkRoleOpt> linkNamesMap = new HashMap<String, ILinkRoleOpt>();
+
   /* (non-Javadoc)
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
    * javax.servlet.http.HttpServletResponse)
@@ -280,6 +283,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       allValidsItemsLatest.add(workItem.getId());
     }
 
+    createOppositeLinkEntries();
     createLinkChangesOppositeEntries();
 
     timeAfter = System.currentTimeMillis();
@@ -289,6 +293,61 @@ public class WorkItemUpdatesServlet extends HttpServlet {
             + (timeAfter - timeBefore));
 
     return allValidsItemsLatest;
+  }
+
+  /**
+   * This method will create the WI opposite links for every existing direct link since Polarion
+   * does not provide a clear API for that *
+   */
+  private void createOppositeLinkEntries() {
+    Map<String, List<LinkedWorkItem>> oppositeLinksMap =
+        new HashMap<String, List<LinkedWorkItem>>();
+
+    allItemsToSend.forEach(
+        (workItemId, workItemForJson) -> {
+          // for each entry of this map, get the list of linkedWorkItems
+          // for each linked WI, if the link is OUT and if the linkedItem Id is in allItemsId
+          // then, add the linkedItemId to the <new map to create> mapped to a LinkedWorkItem ()
+          if (workItemForJson != null) {
+            workItemForJson
+                .getLinkedWorkItems()
+                .forEach(
+                    linkedWorkItem -> {
+                      if (linkedWorkItem.getLinkDirection().equals(Utils.LinkDirection.OUT)
+                          && allItemsToSend.get(linkedWorkItem.getId()) != null) {
+
+                        ILinkRoleOpt linkRole = linkNamesMap.get(linkedWorkItem.getLinkRoleId());
+                        LinkedWorkItem newEntry =
+                            new LinkedWorkItem(
+                                workItemId,
+                                linkRole.getId(),
+                                linkRole.getOppositeName(),
+                                Utils.LinkDirection.IN);
+                        List<LinkedWorkItem> oppositeEntries =
+                            oppositeLinksMap.get(linkedWorkItem.getId());
+                        if (oppositeEntries != null) {
+                          oppositeEntries.add(newEntry);
+                        } else {
+                          List<LinkedWorkItem> singleEntryList = new ArrayList<LinkedWorkItem>();
+                          singleEntryList.add(newEntry);
+                          oppositeLinksMap.put(linkedWorkItem.getId(), singleEntryList);
+                        }
+                      }
+                    });
+          }
+        });
+
+    // run the <new map to create> and, for each id/key get the value, access the allItemsToSend
+    // map,
+    // get the value from the id/key and add to the linkedWorkItems list the value from the <new map
+    // to create>
+    oppositeLinksMap.forEach(
+        (workItemId, linkedWorkItems) -> {
+          WorkItemForJson workItemForJson = allItemsToSend.get(workItemId);
+          if (workItemForJson != null) {
+            workItemForJson.addAllLinkedWorkItems(linkedWorkItems);
+          }
+        });
   }
 
   /** This method will create the WI changes on the opposite side of the link changes * */
@@ -312,7 +371,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                         new LinkFieldDiff(
                             Utils.LINKED_WORK_ITEMS_FIELD_NAME,
                             linkBundle.getLinkedWorkItem().getLinkRoleId(),
-                            linkBundle.getLinkedWorkItem().getLinkRoleName());
+                            linkBundle.getLinkedWorkItem().getLinkRoleName(),
+                            linkBundle.getLinkedWorkItem().getLinkDirection());
                     workItemChange.addFieldChange(fieldChangeEntry);
                   }
                   if (linkBundle.isAdded()) {
@@ -403,7 +463,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         // We then return only if the item was created within the revision boundaries of the request
         if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= Integer.valueOf(endRevision))
           workItemForJson =
-              Utils.castWorkItem(workItemHistory.get(0), includeCustomFields, includeLinkRoles);
+              Utils.castWorkItem(
+                  workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap);
       } else if (workItemHistory.size() > 1) {
         /**
          * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
@@ -422,7 +483,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         if (endIndex >= 0) {
           workItemForJson =
               Utils.castWorkItem(
-                  workItemHistory.get(endIndex), includeCustomFields, includeLinkRoles);
+                  workItemHistory.get(endIndex),
+                  includeCustomFields,
+                  includeLinkRoles,
+                  linkNamesMap);
           workItemForJson.setWorkItemChanges(workItemChanges);
         }
       } else {
@@ -515,32 +579,46 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
     if (added != null && !added.isEmpty()) {
-      WorkItemFieldDiff fieldChange = null;
+      List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
       // We check if the collection is hyperlink list first since they're not
       // convertible into IPObjectList. So, we treat them separately.
       if (Utils.isCollectionHyperlinkStructList(added)) {
-        fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(added));
+        fieldChanges.add(fieldChange);
         // Then we check if they're ILiknedWorkItemStruc, because, again,
         // Polarion treats those 'struct' objects differently thank regular
         // IPObjects
       } else if (includeLinkRoles != null && Utils.isCollectionLinkedWorkItemStructList(added)) {
         // If the collection is a list of LinkedWorkItemStruct, we also treat them specifically
-        String linkRoleId = ((ILinkedWorkItemStruct) added.iterator().next()).getLinkRole().getId();
-        if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)
-            && fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
-          ILinkRoleOpt linkRole = ((ILinkedWorkItemStruct) added.iterator().next()).getLinkRole();
-          fieldChange =
-              new LinkFieldDiff(fieldDiff.getFieldName(), linkRole.getId(), linkRole.getName());
-          fieldChange.setElementsAdded(Utils.castLinkedWorkItemsToStrList(added));
-          updateOppositeLinksMap(workItemId, workItemChange.getRevision(), added, true);
+        if (fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
+          Collection<ILinkedWorkItemStruct> links = (Collection<ILinkedWorkItemStruct>) added;
+          links.forEach(
+              linkStruct -> {
+                ILinkRoleOpt linkRole = linkStruct.getLinkRole();
+                if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
+                  WorkItemFieldDiff fieldChange =
+                      new LinkFieldDiff(
+                          fieldDiff.getFieldName(),
+                          linkRole.getId(),
+                          linkRole.getName(),
+                          Utils.LinkDirection.OUT);
+                  List<String> singleAdded = new ArrayList<String>(1);
+                  singleAdded.add(linkStruct.getLinkedItem().getId());
+                  fieldChange.setElementsAdded(singleAdded);
+                  fieldChanges.add(fieldChange);
+                  updateOppositeLinksMap(
+                      workItemId, workItemChange.getRevision(), linkStruct, true);
+                }
+              });
         }
       } else if (Utils.isCollectionApprovalStructList(added)) {
         // If the collection is a list of ApprovalStruct, we also treat them specifically
-        fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsAdded(Utils.castApprovalsToStrList(added));
+        fieldChanges.add(fieldChange);
       } else if (!Utils.isCollectionLinkedWorkItemStructList(added)) {
-        fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
           fieldChange.setElementsAdded(Utils.castCollectionToStrList((List<IPObject>) added));
         } catch (ClassCastException ex) {
@@ -550,32 +628,46 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           // (skip the field from the json output)
           fieldChange.setElementsAdded(new ArrayList<String>());
         }
+        fieldChanges.add(fieldChange);
       }
-      if (fieldChange != null) {
-        workItemChange.addFieldChange(fieldChange);
+      if (!fieldChanges.isEmpty()) {
+        workItemChange.addFieldChanges(fieldChanges);
       }
     }
     if (removed != null && !removed.isEmpty()) {
-      WorkItemFieldDiff fieldChange = null;
+      List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
       if (Utils.isCollectionHyperlinkStructList(removed)) {
-        fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsRemoved(Utils.castHyperlinksToStrList(removed));
+        fieldChanges.add(fieldChange);
       } else if (includeLinkRoles != null && Utils.isCollectionLinkedWorkItemStructList(removed)) {
-        String linkRoleId =
-            ((ILinkedWorkItemStruct) removed.iterator().next()).getLinkRole().getId();
-        if (Arrays.stream(includeLinkRoles).anyMatch(linkRoleId::equals)
-            && fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
-          ILinkRoleOpt linkRole = ((ILinkedWorkItemStruct) removed.iterator().next()).getLinkRole();
-          fieldChange =
-              new LinkFieldDiff(fieldDiff.getFieldName(), linkRole.getId(), linkRole.getName());
-          fieldChange.setElementsRemoved(Utils.castLinkedWorkItemsToStrList(removed));
-          updateOppositeLinksMap(workItemId, workItemChange.getRevision(), removed, false);
+        if (fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
+          Collection<ILinkedWorkItemStruct> links = (Collection<ILinkedWorkItemStruct>) removed;
+          links.forEach(
+              linkStruct -> {
+                ILinkRoleOpt linkRole = linkStruct.getLinkRole();
+                if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
+                  WorkItemFieldDiff fieldChange =
+                      new LinkFieldDiff(
+                          fieldDiff.getFieldName(),
+                          linkRole.getId(),
+                          linkRole.getName(),
+                          Utils.LinkDirection.OUT);
+                  List<String> singleAdded = new ArrayList<String>(1);
+                  singleAdded.add(linkStruct.getLinkedItem().getId());
+                  fieldChange.setElementsRemoved(singleAdded);
+                  fieldChanges.add(fieldChange);
+                  updateOppositeLinksMap(
+                      workItemId, workItemChange.getRevision(), linkStruct, false);
+                }
+              });
         }
       } else if (Utils.isCollectionApprovalStructList(removed)) {
-        fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(removed));
+        fieldChanges.add(fieldChange);
       } else if (!Utils.isCollectionLinkedWorkItemStructList(removed)) {
-        fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         try {
           fieldChange.setElementsRemoved(Utils.castCollectionToStrList((List<IPObject>) removed));
         } catch (ClassCastException ex) {
@@ -585,9 +677,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           // (skip the field from the output)
           fieldChange.setElementsRemoved(new ArrayList<String>());
         }
+        fieldChanges.add(fieldChange);
       }
-      if (fieldChange != null) {
-        workItemChange.addFieldChange(fieldChange);
+      if (!fieldChanges.isEmpty()) {
+        workItemChange.addFieldChanges(fieldChanges);
       }
     }
   }
@@ -600,50 +693,97 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    * @param workItemId represents the link origin. On the map, this id will be the receiver
    *     (reverse)
    * @param revision represents the revision number when the link changed (added/removed)
-   * @param links represents a collection generated by Polarion containing the added/removed links
+   * @param link that represent a ILinkWorkItemStruct given by Polarion containing the added/removed
+   *     link
    * @param added is true if this a list of added links, otherwise these are removed links *
    */
   private void updateOppositeLinksMap(
-      String workItemId, String revision, Collection<ILinkedWorkItemStruct> links, boolean added) {
+      String workItemId, String revision, ILinkedWorkItemStruct link, boolean added) {
 
     // For each link struct, get the WI id, check if there's an entry in the map
     // if there is, check if there's a link of same type, action (added/removed), and revision
-    // if there isn't, add an entry to the map flipping the ids (reverse)
-    for (ILinkedWorkItemStruct linkStruct : links) {
-      List<LinkBundle> linkBundles = backwardLinksTobeAdded.get(linkStruct.getLinkedItem().getId());
-      LinkBundle reverse = null;
-      if (linkBundles == null) {
-        reverse = new LinkBundle();
-        reverse.setAdded(added);
-        reverse.setRevision(revision);
-        reverse.setLinkedWorkItem(
-            new LinkedWorkItem(
-                workItemId, linkStruct.getLinkRole().getId(), linkStruct.getLinkRole().getName()));
-        List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
-        newLinkBundles.add(reverse);
-        backwardLinksTobeAdded.put(linkStruct.getLinkedItem().getId(), newLinkBundles);
-      } else {
-        if (!alreadyHasLinkBundle(linkBundles, linkStruct, revision, added)) {
-          reverse = new LinkBundle();
-          reverse.setAdded(added);
-          reverse.setRevision(revision);
-          reverse.setLinkedWorkItem(
+    // if there isn't, add an entry to the map fliping the ids (reverse)
+
+    List<LinkBundle> linkBundles = backwardLinksTobeAdded.get(link.getLinkedItem().getId());
+    LinkBundle reverse = null;
+    if (linkBundles == null) {
+      reverse =
+          new LinkBundle(
+              added,
               new LinkedWorkItem(
                   workItemId,
-                  linkStruct.getLinkRole().getId(),
-                  linkStruct.getLinkRole().getName()));
-          linkBundles.add(reverse);
-        }
+                  link.getLinkRole().getId(),
+                  link.getLinkRole().getOppositeName(),
+                  Utils.LinkDirection.IN),
+              revision);
+      List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
+      newLinkBundles.add(reverse);
+      backwardLinksTobeAdded.put(link.getLinkedItem().getId(), newLinkBundles);
+    } else {
+      if (!alreadyHasLinkBundle(linkBundles, link, revision, added)) {
+        reverse =
+            new LinkBundle(
+                added,
+                new LinkedWorkItem(
+                    workItemId,
+                    link.getLinkRole().getId(),
+                    link.getLinkRole().getOppositeName(),
+                    Utils.LinkDirection.IN),
+                revision);
+        linkBundles.add(reverse);
       }
     }
   }
+  //  /**
+  //   * This maintains a map of opposite work item links. This is necessary since Polarion doesn't
+  //   * generate a change/field diff for the opposite end of the link. So, we need to generate
+  // those
+  //   * link changes manually for receiving end.
+  //   *
+  //   * @param workItemId represents the link origin. On the map, this id will be the receiver
+  //   *     (reverse)
+  //   * @param revision represents the revision number when the link changed (added/removed)
+  //   * @param links represents a collection generated by Polarion containing the added/removed
+  // links
+  //   * @param added is true if this a list of added links, otherwise these are removed links *
+  //   */
+  //  private void updateOppositeLinksMap(
+  //      String workItemId, String revision, Collection<ILinkedWorkItemStruct> links, boolean
+  // added) {
+  //
+  //    // For each link struct, get the WI id, check if there's an entry in the map
+  //    // if there is, check if there's a link of same type, action (added/removed), and revision
+  //    // if there isn't, add an entry to the map fliping the ids (reverse)
+  //    for (ILinkedWorkItemStruct linkStruct : links) {
+  //      List<LinkBundle> linkBundles =
+  // backwardLinksTobeAdded.get(linkStruct.getLinkedItem().getId());
+  //      LinkBundle reverse = null;
+  //      if (linkBundles == null) {
+  //        reverse = new LinkBundle(added, new LinkedWorkItem(
+  //                workItemId, linkStruct.getLinkRole().getId(),
+  // linkStruct.getLinkRole().getOppositeName(), Utils.LinkDirection.IN), revision);
+  //        List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
+  //        newLinkBundles.add(reverse);
+  //        backwardLinksTobeAdded.put(linkStruct.getLinkedItem().getId(), newLinkBundles);
+  //      } else {
+  //        if (!alreadyHasLinkBundle(linkBundles, linkStruct, revision, added)) {
+  //          reverse = new LinkBundle(added, new LinkedWorkItem(
+  //                  workItemId,
+  //                  linkStruct.getLinkRole().getId(),
+  //                  linkStruct.getLinkRole().getOppositeName(), Utils.LinkDirection.IN),
+  // revision);
+  //          linkBundles.add(reverse);
+  //        }
+  //      }
+  //    }
+  //  }
 
   /**
    * Helper method called by {@link #updateOppositeLinksMap()} to check if a LinkBundle was already
    * created in the map *
    */
   private boolean alreadyHasLinkBundle(
-      List<LinkBundle> linkBundles,
+      final List<LinkBundle> linkBundles,
       ILinkedWorkItemStruct linkStruct,
       String revision,
       boolean added) {
@@ -652,6 +792,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       if (linkBundle.getRevision().equals(revision)
           && linkBundle.isAdded() == added
           && linkBundle.getLinkedWorkItem().getLinkRoleId().equals(linkStruct.getLinkRole().getId())
+          && linkBundle.getLinkedWorkItem().getLinkDirection().equals(Utils.LinkDirection.IN)
           && linkBundle.getLinkedWorkItem().getId().equals(linkStruct.getLinkedItem().getId())) {
         return true;
       }

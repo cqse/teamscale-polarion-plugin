@@ -4,35 +4,29 @@ package com.teamscale.polarion.plugin.model;
  * This is a helper object that maintains link data and is used to process and generate opposite
  * link changes in the plugin. *
  */
-public class LinkBundle {
+public final class LinkBundle {
 
   // Whether this is an added or removed link
-  private boolean added;
+  private final boolean added;
 
   // The object that represents the linked item and the role id
-  private LinkedWorkItem linkedWorkItem;
+  private final LinkedWorkItem linkedWorkItem;
 
   // The revision # this link represents
-  private String revision;
+  private final String revision;
 
-  public void setAdded(boolean added) {
+  public LinkBundle(boolean added, LinkedWorkItem linkedWorkItem, String revision) {
     this.added = added;
+    this.linkedWorkItem = linkedWorkItem;
+    this.revision = revision;
   }
 
   public boolean isAdded() {
     return added;
   }
 
-  public void setLinkedWorkItem(LinkedWorkItem linkedWorkItem) {
-    this.linkedWorkItem = linkedWorkItem;
-  }
-
   public LinkedWorkItem getLinkedWorkItem() {
     return linkedWorkItem;
-  }
-
-  public void setRevision(String revision) {
-    this.revision = revision;
   }
 
   public String getRevision() {

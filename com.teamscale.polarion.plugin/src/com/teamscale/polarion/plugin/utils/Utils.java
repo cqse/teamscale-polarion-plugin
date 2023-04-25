@@ -6,6 +6,7 @@ import com.polarion.alm.tracker.model.IAttachment;
 import com.polarion.alm.tracker.model.ICategory;
 import com.polarion.alm.tracker.model.IComment;
 import com.polarion.alm.tracker.model.IHyperlinkStruct;
+import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITestSteps;
@@ -22,6 +23,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,8 +36,16 @@ public class Utils {
     DELETED
   }
 
+  public enum LinkDirection {
+    IN,
+    OUT
+  }
+
   public static WorkItemForJson castWorkItem(
-      IWorkItem workItem, String[] includeCustomFields, String[] includeLinkRoles) {
+      IWorkItem workItem,
+      String[] includeCustomFields,
+      String[] includeLinkRoles,
+      Map<String, ILinkRoleOpt> linkNamesMap) {
 
     WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId(), UpdateType.UPDATED);
     if (workItem.getRevision() != null) workItemForJson.setRevision(workItem.getRevision());
@@ -78,7 +88,7 @@ public class Utils {
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
     if (workItem.getModule() != null) workItemForJson.setModuleId(workItem.getModule().getId());
     if (workItem.getModule() != null)
-      workItemForJson.setModuleTitle(workItem.getModule().getTitle());
+      workItemForJson.setModuleTitle(workItem.getModule().getTitleOrName());
     if (workItem.getProjectId() != null) workItemForJson.setProjectId(workItem.getProjectId());
     if (workItem.getAuthor() != null) workItemForJson.setAuthor(workItem.getAuthor().getId());
     if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty())
@@ -105,38 +115,30 @@ public class Utils {
         && includeLinkRoles.length > 0
         && workItem.getLinkedWorkItems() != null
         && !workItem.getLinkedWorkItems().isEmpty()) {
-      // Getting all links (in and out links)
-      Set<LinkedWorkItem> linksBackSet =
-          workItem.getLinkedWorkItemsStructsBack().stream()
-              .filter(
-                  linkStruct ->
-                      Arrays.asList(includeLinkRoles).contains(linkStruct.getLinkRole().getId()))
-              .map(
-                  linkStruct ->
-                      new LinkedWorkItem(
-                          linkStruct.getLinkedItem().getId(),
-                          linkStruct.getLinkRole().getId(),
-                          linkStruct.getLinkRole().getName()))
-              .collect(Collectors.toSet());
 
-      Set<LinkedWorkItem> linksDirectSet =
-          workItem.getLinkedWorkItemsStructsDirect().stream()
-              .filter(
-                  linkStruct ->
-                      Arrays.asList(includeLinkRoles).contains(linkStruct.getLinkRole().getId()))
-              .map(
-                  linkStruct ->
-                      new LinkedWorkItem(
-                          linkStruct.getLinkedItem().getId(),
-                          linkStruct.getLinkRole().getId(),
-                          linkStruct.getLinkRole().getName()))
-              .collect(Collectors.toSet());
+      List<ILinkedWorkItemStruct> directLinksStruct =
+          (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsDirect();
+      List<LinkedWorkItem> linkedItems =
+          (List<LinkedWorkItem>)
+              directLinksStruct.stream()
+                  .filter(
+                      linkStruct ->
+                          Arrays.asList(includeLinkRoles)
+                              .contains(linkStruct.getLinkRole().getId()))
+                  .map(
+                      linkStruct -> {
+                        linkNamesMap.putIfAbsent(
+                            linkStruct.getLinkRole().getId(), linkStruct.getLinkRole());
 
-      if (!linksDirectSet.isEmpty() || !linksBackSet.isEmpty()) {
-        // Set Union on the remaining links after filtering out undesired link roles
-        linksDirectSet.addAll(linksBackSet);
-        workItemForJson.setLinkedWorkItems(
-            linksDirectSet.toArray(new LinkedWorkItem[linksDirectSet.size()]));
+                        return new LinkedWorkItem(
+                            linkStruct.getLinkedItem().getId(),
+                            linkStruct.getLinkRole().getId(),
+                            linkStruct.getLinkRole().getName(),
+                            LinkDirection.OUT);
+                      })
+                  .collect(Collectors.toList());
+      if (!linkedItems.isEmpty()) {
+        workItemForJson.setLinkedWorkItems(linkedItems);
       }
     }
 
