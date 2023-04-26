@@ -235,10 +235,10 @@ components:
           items:
             type: string             
         customFields:
-              type: array
-              items: 
-                $ref: '#/components/schemas/CustomFieldValue'
-              description: Contains all custom fields
+          type: array
+          items: 
+            $ref: '#/components/schemas/CustomFieldValue'
+          description: Contains all custom fields            
         linkedWorkItems:
           type: array
           items:
@@ -261,95 +261,84 @@ components:
                   - OUT
         workItemChanges:
           type: array
-          items: $ref: '#/components/schemas/WorkItemChange'
+          items: 
+            $ref: '#/components/schemas/WorkItemChange'
+          description: Collection of changes for the work item grouped by revision number
     CustomFieldValue:
       type: object
       description: Value of the custom field. Does not have an explicit type, as this depends on the custom field definition    
     WorkItemChange:
-      description: |
-        Single change of a work item.
-        A work item may either be updated (WorkItemUpdate) or deleted (WorkItemDeletion).
-      oneOf:
-        - $ref: '#/components/schemas/WorkItemUpdate'
-        - $ref: '#/components/schemas/WorkItemDeletion'
-      discriminator:
-        propertyName: updateType
-        mapping:
-          UPDATE: '#/components/schemas/WorkItemUpdate'
-          DELETE: '#/components/schemas/WorkItemDeletion'
-    WorkItemChangeBase:
-      description: |
-        Base type for work item changes.
+      type: object
+      required:
+        - revision
+        - fieldChanges
+      properties:
+        revision:
+          type: string
+          example: '123'
+          description: Revision of which the work item was updated
+        fieldChanges:
+          type: array
+          items: 
+            oneOf:
+            - $ref: '#/components/schemas/FieldChange'
+            - $ref: '#/components/schemas/LinkFieldChange'
+        valueBefore:
+            description: Value before the change
+        valueAfter:
+            description: Value after the change
+    FieldChange:
+      type: object
+      description: Object that represents a field change (fieldDiff)
+      properties:
+        fieldName:
+          type: string
+          example: 'title'
+        oneOfTheFollowing:
+          oneOf:
+            - properties:
+                fieldValueBefore:
+                  type: string
+                  example: 'Borrow a Book'
+                fieldValueAfter:
+                  type: string
+                  example: 'Reserve a Book'
+            - properties:
+                elementsAdded:
+                  type: array
+                  items: 
+                    type: string
+            - properties:
+                elementsRemoved:
+                  type: array
+                  items: 
+                    type: string       
+    LinkFieldChange:
       type: object
       properties:
-        updateType:
+        linkRoleId:
+          type: string
+          example: 'parent'
+        linkRoleName:
+          type: string
+          example: 'has parent'
+        linkRoleDirection:
           type: string
           enum:
-            - UPDATE
-            - DELETE
-        timestamp:
-          type: integer
-          description: |
-            Unix timestamp of the change
-        workItemId:
+            - IN
+            - OUT
+        fieldName:
           type: string
-          description: |
-            Polarion internal ID of the changed work item
-      required:
-        - updateType
-    WorkItemDeletion:
-      description: |
-        Marks the deletion of a single work item.
-        A deletion could have multiple sources:
-        1. The actual deletion of the work item from Polarion
-        2. The work item moved out of the described project/space/module
-        3. The work item was moved into the recycle bin of a document
-      allOf:
-        - $ref: '#/components/schemas/WorkItemChangeBase'
-        - type: object
-          # No other properties (yet)
-    WorkItemUpdate:
-      description: |
-        Describes an update of a work item.
-        An update can either be reported in full, i.e. the complete data of the work item are reported (WorkItemUpdateComplete),
-        or only as patch delta of one specific field (WorkItemUpdateDelta).
-        An update may only be reported as delta if at least one complete update (WorkItemUpdateComplete) for the same item is included earlier in the same batch.
-      allOf:
-        - $ref: '#/components/schemas/WorkItemChangeBase'
-        - oneOf:
-            - $ref: '#/components/schemas/WorkItemUpdateDelta'
-            - $ref: '#/components/schemas/WorkItemUpdateComplete'
-    WorkItemUpdateDelta:
-      description: |
-        Delta change to the latest reported version.
-        An update may only be reported as delta if at least one complete update (WorkItemUpdateComplete) for the same item is included earlier in the same batch.
-      type: object
-      required:
-        - delta
-      properties:
-        delta:
-          type: object
-          properties:
-            revision:
-              type: string
-              description: Revision of the work item after the update
-            changedFieldPath:
-              type: string
-              description: JSONPath pointing to the changed field within a WorkItem
-            valueBefore:
-              description: Value before the change
-            valueAfter:
-              description: Value after the change
-          required:
-            - changedField
-            - valueBefore
-            - valueAfter
-    WorkItemUpdateComplete:
-      description: |
-        Contains the complete work item after an update.
-      type: object
-      required:
-        - workItem
-      properties:
-        workItem:
-          $ref: '#/components/schemas/WorkItem'
+          example: 'linkedWorkItems'        
+        oneOfTheFollowing:
+          oneOf:
+            - properties:
+                elementsAdded:
+                  type: array
+                  items: 
+                    type: string
+            - properties:
+                elementsRemoved:
+                  type: array
+                  items: 
+                    type: string  
