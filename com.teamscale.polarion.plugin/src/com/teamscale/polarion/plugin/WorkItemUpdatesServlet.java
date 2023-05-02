@@ -733,6 +733,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       }
     }
   }
+
   //  /**
   //   * This maintains a map of opposite work item links. This is necessary since Polarion doesn't
   //   * generate a change/field diff for the opposite end of the link. So, we need to generate

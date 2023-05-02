@@ -10,6 +10,7 @@ import java.util.List;
 public class WorkItemFieldDiff {
 
   private String fieldName;
+
   /**
    * We either use fieldValueBefore/After or we use elementsAdded/Removed. This is due to the way
    * Polarion treats categorical values vs. other values (e.g., string, numbers, dates).
