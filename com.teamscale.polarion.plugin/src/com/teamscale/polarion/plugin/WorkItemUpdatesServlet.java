@@ -58,39 +58,46 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private IModule module;
 
-  // If empty, no work item links should be included. We expect role IDs (not role names)
+  /** If empty, no work item links should be included. We expect role IDs (not role names) */
   private String[] includeLinkRoles;
 
-  // Base revision # for the request
+  /** Base revision # for the request */
   private String lastUpdate;
 
-  // End revision # to indicate the final revision (included) the request is looking for
+  /** End revision # to indicate the final revision (included) the request is looking for */
   private String endRevision;
 
-  // List of possible types the result can have. If empty, items of all types should be included.
+  /**
+   * List of possible types the result can have. If empty, items of all types should be included.
+   */
   private String[] workItemTypes;
 
-  // List of work item custom fields that should be included in the result.
-  // If empty, no custom fields should be present.
+  /**
+   * List of work item custom fields that should be included in the result. If empty, no custom
+   * fields should be present.
+   */
   private String[] includeCustomFields;
 
-  // This is to generate changes in the json result related to backward links, since
-  // Polarion doesn't return a diff/change associated with the opposite end of the link
-  // when a link changes (added/removed).
-  // The key of this map is the workItemId to receive the change
+  /**
+   * This is to generate changes in the json result related to backward links, since Polarion
+   * doesn't return a diff/change associated with the opposite end of the link when a link changes
+   * (added/removed). The key of this map is the workItemId to receive the change
+   */
   private Map<String, List<LinkBundle>> backwardLinksTobeAdded;
 
-  // This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
-  // This provides O(1) access when, at the end, we need to go back and feed them with
-  // the work items opposite link changes.
+  /**
+   * This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
+   * This provides O(1) access when, at the end, we need to go back and feed them with the work
+   * items opposite link changes.
+   */
   private Map<String, WorkItemForJson> allItemsToSend;
 
-  // This is used to keep a map of linkRoleIds to its in/out link names
+  /** This is used to keep a map of linkRoleIds to its in/out link names */
   private Map<String, ILinkRoleOpt> linkNamesMap = new HashMap<String, ILinkRoleOpt>();
 
-  /* (non-Javadoc)
+  /**
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
-   * javax.servlet.http.HttpServletResponse)
+   *     javax.servlet.http.HttpServletResponse)
    */
   @Override
   protected void doGet(final HttpServletRequest req, final HttpServletResponse res)
@@ -145,11 +152,15 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
   }
 
-  /* This method is necessary since Polarion redirects a POST request when the original GET request to this servlet
-   * is attempted without being authenticated. Polarion redirects the client to a login form.
-   * Once the client sends an auth request (which is a POST) and is successfully authenticated,
-   * Polarion then redirects the auth post request to this servlet (which we then call the method doGet).
-   * @see javax.servlet.http.HttpServlet#doPost(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
+  /**
+   * This method is necessary since Polarion redirects a POST request when the original GET request
+   * to this servlet is attempted without being authenticated. Polarion redirects the client to a
+   * login form. Once the client sends an auth request (which is a POST) and is successfully
+   * authenticated, Polarion then redirects the auth post request to this servlet (which we then
+   * call the method doGet).
+   *
+   * @see javax.servlet.http.HttpServlet#doPost(javax.servlet.http.HttpServletRequest,
+   *     javax.servlet.http.HttpServletResponse)
    */
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp)
@@ -201,7 +212,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return sqlQuery.toString();
   }
 
-  /** If empty, work items of all types should be included. * */
+  /** If the return string is blank work items of all types will be included in the query. */
   private String generateWorkItemTypesAndClause() {
     StringBuilder andClause = new StringBuilder("");
     if (workItemTypes != null && workItemTypes.length > 0) {
@@ -240,7 +251,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   /**
    * This method runs the SQL query and starts processing all the work items returned from the
    * query. Additionally, it returns all work item Ids that are valid in the database at the moment
-   * (after lastUpdate). That return will be use to pass this list of Ids to the response. *
+   * (after lastUpdate). That return will be used to pass this list of Ids to the response. *
    */
   private Collection<String> retrieveChanges(String projId, String spaceId, String docId) {
 
@@ -268,7 +279,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
         WorkItemForJson workItemForJson;
 
-        // This is because WIs moved to the trash can are still in the Polarion WI table we query
+        // This is because WIs moved to the recyble bin are still in the Polarion WI table we query
         if (wasMovedToRecycleBin(workItem) && shouldIncludeItemFromRecybleBin(workItem)) {
           workItemForJson = buildDeletedWorkItemForJson(workItem);
         } else {
@@ -296,8 +307,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   /**
-   * This method will create the WI opposite links for every existing direct link since Polarion
-   * does not provide a clear API for that *
+   * This creates work item opposite links for every existing direct link since Polarion does not
+   * provide a clear API for that. The method getLinkedWorkItemsStructsBack from Polarion API
+   * returns a collection of ILinkedWorkItemStruct with links roles as "triggered_by" which is not
+   * helpful for us to select specific requested links.
    */
   private void createOppositeLinkEntries() {
     Map<String, List<LinkedWorkItem>> oppositeLinksMap =
@@ -349,7 +362,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         });
   }
 
-  /** This method will create the WI changes on the opposite side of the link changes * */
+  /**
+   * This method will create the WI changes on the opposite side of the link changes. Note this
+   * method is different from {@link #createOppositeLinkEntries()} which creates opposite link
+   * entries for each direct link the current version of the work item has, while the following
+   * method creates opposite link entries as link changes for the work item changes section.
+   */
   private void createLinkChangesOppositeEntries() {
     backwardLinksTobeAdded.forEach(
         (workItemId, linkBundles) -> {
@@ -384,7 +402,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         });
   }
 
-  /** Helper method for {@link #createLinkChangesOppositeEntries}. * */
+  /** Helper method for {@link #createLinkChangesOppositeEntries}. */
   private WorkItemChange findRevisionEntry(
       Collection<WorkItemChange> workItemChanges, LinkBundle linkBundle) {
 
@@ -398,7 +416,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return null;
   }
 
-  /** Helper method for {@link #createLinkChangesOppositeEntries}. * */
+  /** Helper method for {@link #createLinkChangesOppositeEntries}. */
   private WorkItemFieldDiff findFieldChangeEntry(
       WorkItemChange workItemChange, LinkBundle linkBundle) {
     for (WorkItemFieldDiff fieldChangeEntry : workItemChange.getFieldChanges()) {
@@ -433,7 +451,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         && workItemLastRevision <= Integer.parseInt(endRevision));
   }
 
-  /** Create the work item object as DELETED * */
+  /** Create the work item object as DELETED */
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
     WorkItemForJson item = new WorkItemForJson(workItem.getId(), Utils.UpdateType.DELETED);
     // Note: Items in the recycle bin can still undergo changes. For instance, if
@@ -734,50 +752,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
   }
 
-  //  /**
-  //   * This maintains a map of opposite work item links. This is necessary since Polarion doesn't
-  //   * generate a change/field diff for the opposite end of the link. So, we need to generate
-  // those
-  //   * link changes manually for receiving end.
-  //   *
-  //   * @param workItemId represents the link origin. On the map, this id will be the receiver
-  //   *     (reverse)
-  //   * @param revision represents the revision number when the link changed (added/removed)
-  //   * @param links represents a collection generated by Polarion containing the added/removed
-  // links
-  //   * @param added is true if this a list of added links, otherwise these are removed links *
-  //   */
-  //  private void updateOppositeLinksMap(
-  //      String workItemId, String revision, Collection<ILinkedWorkItemStruct> links, boolean
-  // added) {
-  //
-  //    // For each link struct, get the WI id, check if there's an entry in the map
-  //    // if there is, check if there's a link of same type, action (added/removed), and revision
-  //    // if there isn't, add an entry to the map fliping the ids (reverse)
-  //    for (ILinkedWorkItemStruct linkStruct : links) {
-  //      List<LinkBundle> linkBundles =
-  // backwardLinksTobeAdded.get(linkStruct.getLinkedItem().getId());
-  //      LinkBundle reverse = null;
-  //      if (linkBundles == null) {
-  //        reverse = new LinkBundle(added, new LinkedWorkItem(
-  //                workItemId, linkStruct.getLinkRole().getId(),
-  // linkStruct.getLinkRole().getOppositeName(), Utils.LinkDirection.IN), revision);
-  //        List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
-  //        newLinkBundles.add(reverse);
-  //        backwardLinksTobeAdded.put(linkStruct.getLinkedItem().getId(), newLinkBundles);
-  //      } else {
-  //        if (!alreadyHasLinkBundle(linkBundles, linkStruct, revision, added)) {
-  //          reverse = new LinkBundle(added, new LinkedWorkItem(
-  //                  workItemId,
-  //                  linkStruct.getLinkRole().getId(),
-  //                  linkStruct.getLinkRole().getOppositeName(), Utils.LinkDirection.IN),
-  // revision);
-  //          linkBundles.add(reverse);
-  //        }
-  //      }
-  //    }
-  //  }
-
   /**
    * Helper method called by {@link #updateOppositeLinksMap()} to check if a LinkBundle was already
    * created in the map *
@@ -849,10 +823,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return (index == 0 ? index : index - 1);
   }
 
-  /*
-   * This method validates these required request attributes.
-   * Split into three separate helper methods, one for each param.
-   *  */
+  /**
+   * This method validates these required request attributes. Split into three separate helper
+   * methods, one for each param.
+   */
   private boolean validateParameters(String projectId, String space, String doc) {
     // Needs to be executed in this order. Space validation only runs after projectId is validated.
     // DocId is validated only if projectId and SpaceId are validated.
@@ -886,7 +860,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return false;
   }
 
-  /** This helper method should be called after validating the space (aka folder) * */
+  /** This helper method should be called after validating the space (aka folder) */
   private boolean validateDocumentId(String projId, String space, String docId) {
     // Haven't found in the Polarion Java API a straightforward way to validate a docId.
     // That's why the current solution has to select all documents in the given
