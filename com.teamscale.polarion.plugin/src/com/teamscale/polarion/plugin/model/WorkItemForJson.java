@@ -281,6 +281,12 @@ public class WorkItemForJson {
     this.comments = comments;
   }
 
+  /**
+   * It's ok to return collection fields as null here rather than empty lists since null fields will
+   * not be serialized into json (intentionally) rather than be serialized as empty fields. Side
+   * effect: if client objects need to process this list, then they need to do a null check before
+   * using it to avoid NPE.
+   */
   public List<LinkedWorkItem> getLinkedWorkItems() {
     return linkedWorkItems;
   }
@@ -289,11 +295,11 @@ public class WorkItemForJson {
     this.linkedWorkItems = linkedWorkItems;
   }
 
-  public void addAllLinkedWorkItems(List<LinkedWorkItem> linkedWorkItems) {
-    if (linkedWorkItems == null) {
-      this.linkedWorkItems = linkedWorkItems;
+  public void addAllLinkedWorkItems(List<LinkedWorkItem> newLinkedWorkItems) {
+    if (this.linkedWorkItems == null) {
+      this.linkedWorkItems = newLinkedWorkItems;
     } else {
-      this.linkedWorkItems.addAll(linkedWorkItems);
+      this.linkedWorkItems.addAll(newLinkedWorkItems);
     }
   }
 

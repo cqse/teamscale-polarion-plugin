@@ -305,10 +305,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     allItemsToSend.forEach(
         (workItemId, workItemForJson) -> {
-          // for each entry of this map, get the list of linkedWorkItems
-          // for each linked WI, if the link is OUT and if the linkedItem Id is in allItemsId
-          // then, add the linkedItemId to the <new map to create> mapped to a LinkedWorkItem ()
-          if (workItemForJson != null) {
+          // for each entry of the map allItemsToSend, get the list of linkedWorkItems
+          // for each linked WI, if the link is OUT and if the linkedWorkItem id is in allItemsId
+          // then, add the linkedWorkItem to the oppositeLinksMap mapped to a LinkedWorkItem
+          if (workItemForJson != null && workItemForJson.getLinkedWorkItems() != null) {
             workItemForJson
                 .getLinkedWorkItems()
                 .forEach(
@@ -337,10 +337,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           }
         });
 
-    // run the <new map to create> and, for each id/key get the value, access the allItemsToSend
-    // map,
-    // get the value from the id/key and add to the linkedWorkItems list the value from the <new map
-    // to create>
+    // run the oppositeLinksMap and, for each id/key get the value, access the allItemsToSend
+    // map, get the value from the id/key and add to the linkedWorkItems list the value
+    // from the oppositeLinksMap
     oppositeLinksMap.forEach(
         (workItemId, linkedWorkItems) -> {
           WorkItemForJson workItemForJson = allItemsToSend.get(workItemId);
