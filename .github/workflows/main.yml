@@ -1,8 +1,6 @@
 name: CodeFormatting
 
-on:
-  push:
-    branches: [ ts/32648_polarion_plugin ]
+on: push
 
 jobs:
 
