@@ -29,14 +29,14 @@ public class ActionsFilter extends DoAsFilter implements Filter {
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
       } else {
-        logger.info("[Teamscale Polarion Plugin] 404, Resource not found to be sent.");
+        logger.info("[Teamscale Polarion Plugin] 404, Resource not found.");
         ((HttpServletResponse) res)
             .sendError(
                 HttpServletResponse.SC_NOT_FOUND, "The requested resource or action is not found");
       }
     } else {
-      logger.info("[Teamscale Polarion Plugin] This service supports only HTTP requests.");
-      throw new ServletException("This service supports only HTTP requests.");
+      logger.info("[Teamscale Polarion Plugin] This service supports only HTTP(s) requests.");
+      throw new ServletException("This service supports only HTTP(s) requests.");
     }
   }
 

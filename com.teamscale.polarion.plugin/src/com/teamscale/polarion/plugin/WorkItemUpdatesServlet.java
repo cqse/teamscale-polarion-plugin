@@ -7,8 +7,6 @@ import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
-import com.polarion.core.util.logging.ILogger;
-import com.polarion.core.util.logging.Logger;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IDataService;
 import com.polarion.platform.persistence.UnresolvableObjectException;
@@ -25,6 +23,7 @@ import com.teamscale.polarion.plugin.model.Response;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
+import com.teamscale.polarion.plugin.utils.PluginLogger;
 import com.teamscale.polarion.plugin.utils.Utils;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -51,7 +50,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  private static final ILogger logger = Logger.getLogger(WorkItemUpdatesServlet.class);
+  private PluginLogger logger = new PluginLogger();
 
   private ITrackerService trackerService =
       (ITrackerService) PlatformContext.getPlatform().lookupService(ITrackerService.class);
@@ -117,9 +116,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
 
     if (!processRevisionNumbers()) {
-      logger.info(
-          "[Teamscale Polarion Plugin] Invalid revision numbers. Review the lastUpdate and"
-              + " endRevision strings.");
+      logger.info("Invalid revision numbers. Review the lastUpdate and" + " endRevision strings.");
       res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
       return;
     }
@@ -136,18 +133,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         Collection<String> allValidItemsLatest = retrieveChanges(projId, spaceId, docId);
         sendResponse(res, allValidItemsLatest);
 
-        logger.info("[Teamscale Polarion Plugin] Successful response sent");
+        logger.info("Successful response sent");
       } else {
-        logger.info(
-            "[Teamscale Polarion Plugin] Invalid conbination of projectId/folderId/documentId");
+        logger.info("Invalid conbination of projectId/folderId/documentId");
         res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
       }
     } catch (PermissionDeniedException permissionDenied) {
-      logger.error(
-          "[Teamscale Polarion Plugin] Permission denied raised by Polarion", permissionDenied);
+      logger.error("Permission denied raised by Polarion", permissionDenied);
       res.sendError(HttpServletResponse.SC_FORBIDDEN);
     } catch (AccessDeniedException accessDenied) {
-      logger.error("[Teamscale Polarion Plugin] Access denied raised by Polarion", accessDenied);
+      logger.error("Access denied raised by Polarion", accessDenied);
       res.sendError(HttpServletResponse.SC_FORBIDDEN);
     }
   }
@@ -266,9 +261,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 
     long timeAfter = System.currentTimeMillis();
-    logger.info(
-        "[Teamscale Polarion Plugin] Finished sql query. Execution time in ms: "
-            + (timeAfter - timeBefore));
+    logger.info("Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
 
     timeBefore = System.currentTimeMillis();
 
@@ -299,9 +292,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     timeAfter = System.currentTimeMillis();
     logger.info(
-        "[Teamscale Polarion Plugin] Finished processing request. "
-            + "Execution time (ms): "
-            + (timeAfter - timeBefore));
+        "Finished processing request. " + "Execution time (ms): " + (timeAfter - timeBefore));
 
     return allValidsItemsLatest;
   }
@@ -839,24 +830,22 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     try {
       IProject projObj = trackerService.getProjectsService().getProject(projectId);
 
-      logger.info("[Teamscale Polarion Plugin] Attempting to read projectID: " + projObj.getId());
+      logger.info("Attempting to read projectID: " + projObj.getId());
 
       return true;
 
     } catch (UnresolvableObjectException exception) {
-      logger.error(
-          "[Teamscale Polarion Plugin] Not possible to resolve project with id: " + projectId,
-          exception);
+      logger.error("Not possible to resolve project with id: " + projectId, exception);
       return false;
     }
   }
 
   private boolean validateSpaceId(String projId, String spaceId) {
     if (trackerService.getFolderManager().existFolder(projId, spaceId)) {
-      logger.info("[Teamscale Polarion Plugin] Attempting to read folder: " + spaceId);
+      logger.info("Attempting to read folder: " + spaceId);
       return true;
     }
-    logger.info("[Teamscale Polarion Plugin] Not possible to find folder with id: " + spaceId);
+    logger.info("Not possible to find folder with id: " + spaceId);
     return false;
   }
 
@@ -879,11 +868,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     for (IModule module : modules) {
       if (module.getId().equals(docId)) {
         this.module = module;
-        logger.info("[Teamscale Polarion Plugin] Attempting to read document: " + docId);
+        logger.info("Attempting to read document: " + docId);
         return true;
       }
     }
-    logger.info("[Teamscale Polarion Plugin] Not possible to find document with id: " + docId);
+    logger.info("Not possible to find document with id: " + docId);
     return false;
   }
 }

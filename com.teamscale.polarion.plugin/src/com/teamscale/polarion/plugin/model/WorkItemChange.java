@@ -9,7 +9,9 @@ import java.util.Collection;
  */
 public class WorkItemChange {
 
-  private String revision; // the revision after the change
+  /** the revision after the change */
+  private String revision;
+
   private Collection<WorkItemFieldDiff> fieldChanges;
 
   public WorkItemChange(String revision) {

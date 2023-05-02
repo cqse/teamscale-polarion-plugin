@@ -6,13 +6,13 @@ package com.teamscale.polarion.plugin.model;
  */
 public final class LinkBundle {
 
-  // Whether this is an added or removed link
+  /** Whether this is an added or removed link */
   private final boolean added;
 
-  // The object that represents the linked item and the role id
+  /** The object that represents the linked item and the role id */
   private final LinkedWorkItem linkedWorkItem;
 
-  // The revision # this link represents
+  /** The revision number this link represents */
   private final String revision;
 
   public LinkBundle(boolean added, LinkedWorkItem linkedWorkItem, String revision) {
