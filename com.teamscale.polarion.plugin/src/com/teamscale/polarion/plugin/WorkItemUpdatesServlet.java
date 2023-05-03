@@ -600,109 +600,100 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
     if (added != null && !added.isEmpty()) {
-      List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
-      // We check if the collection is hyperlink list first since they're not
-      // convertible into IPObjectList. So, we treat them separately.
-      if (Utils.isCollectionHyperlinkStructList(added)) {
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(added));
-        fieldChanges.add(fieldChange);
-        // Then we check if they're ILiknedWorkItemStruct, because, again,
-        // Polarion treats those 'struct' objects differently thank regular
-        // IPObjects
-      } else if (includeLinkRoles != null && Utils.isCollectionLinkedWorkItemStructList(added)) {
-        // If the collection is a list of LinkedWorkItemStruct, we also treat them specifically
-        if (fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
-          Collection<ILinkedWorkItemStruct> links = (Collection<ILinkedWorkItemStruct>) added;
-          links.forEach(
-              linkStruct -> {
-                ILinkRoleOpt linkRole = linkStruct.getLinkRole();
-                if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
-                  WorkItemFieldDiff fieldChange =
-                      new LinkFieldDiff(
-                          fieldDiff.getFieldName(),
-                          linkRole.getId(),
-                          linkRole.getName(),
-                          LinkDirection.OUT);
-                  List<String> singleAdded = new ArrayList<String>(1);
-                  singleAdded.add(linkStruct.getLinkedItem().getId());
-                  fieldChange.setElementsAdded(singleAdded);
-                  fieldChanges.add(fieldChange);
-                  updateOppositeLinksMap(
-                      workItemId, workItemChange.getRevision(), linkStruct, true);
-                }
-              });
-        }
-      } else if (Utils.isCollectionApprovalStructList(added)) {
-        // If the collection is a list of ApprovalStruct, we also treat them specifically
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsAdded(Utils.castApprovalsToStrList(added));
-        fieldChanges.add(fieldChange);
-      } else if (!Utils.isCollectionLinkedWorkItemStructList(added)) {
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        try {
-          fieldChange.setElementsAdded(Utils.castCollectionToStrList((List<IPObject>) added));
-        } catch (ClassCastException ex) {
-          // For now, when an added element/value is not among the ones we're supposed
-          // to support in Teamscale, we simply add as an empty string array.
-          // Alternatively, we could ignore the field as a change
-          // (skip the field from the json output)
-          fieldChange.setElementsAdded(new ArrayList<String>());
-        }
-        fieldChanges.add(fieldChange);
-      }
-      if (!fieldChanges.isEmpty()) {
-        workItemChange.addFieldChanges(fieldChanges);
-      }
+      collectFieldDiffAsCollection(added, workItemId, workItemChange, fieldDiff, true);
     }
     if (removed != null && !removed.isEmpty()) {
-      List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
-      if (Utils.isCollectionHyperlinkStructList(removed)) {
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsRemoved(Utils.castHyperlinksToStrList(removed));
-        fieldChanges.add(fieldChange);
-      } else if (includeLinkRoles != null && Utils.isCollectionLinkedWorkItemStructList(removed)) {
-        if (fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
-          Collection<ILinkedWorkItemStruct> links = (Collection<ILinkedWorkItemStruct>) removed;
-          links.forEach(
-              linkStruct -> {
-                ILinkRoleOpt linkRole = linkStruct.getLinkRole();
-                if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
-                  WorkItemFieldDiff fieldChange =
-                      new LinkFieldDiff(
-                          fieldDiff.getFieldName(),
-                          linkRole.getId(),
-                          linkRole.getName(),
-                          LinkDirection.OUT);
-                  List<String> singleAdded = new ArrayList<String>(1);
-                  singleAdded.add(linkStruct.getLinkedItem().getId());
-                  fieldChange.setElementsRemoved(singleAdded);
-                  fieldChanges.add(fieldChange);
-                  updateOppositeLinksMap(
-                      workItemId, workItemChange.getRevision(), linkStruct, false);
+      collectFieldDiffAsCollection(removed, workItemId, workItemChange, fieldDiff, false);
+    }
+  }
+
+  /**
+   * This is an overload of the helper {@see #collectFieldDiffAsCollection(String, WorkItemChange, IFieldDiff)
+   * that applies to either added or removed items from fields that are treated as collections in Polarion
+   * */
+  private void collectFieldDiffAsCollection(
+      Collection addedOrRemovedItems,
+      String workItemId,
+      WorkItemChange workItemChange,
+      IFieldDiff fieldDiff,
+      boolean isAdded) {
+
+    List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
+    // We check if the collection is hyperlink list first since they're not
+    // convertible into IPObjectList. So, we treat them separately.
+    if (Utils.isCollectionHyperlinkStructList(addedOrRemovedItems)) {
+      WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+      if (isAdded) {
+        fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(addedOrRemovedItems));
+      } else {
+        fieldChange.setElementsRemoved(Utils.castHyperlinksToStrList(addedOrRemovedItems));
+      }
+      fieldChanges.add(fieldChange);
+      // Then we check if they're ILiknedWorkItemStruct, because, again,
+      // Polarion treats those 'struct' objects differently thank regular
+      // IPObjects
+    } else if (includeLinkRoles != null
+        && Utils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
+      if (fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
+        Collection<ILinkedWorkItemStruct> links =
+            (Collection<ILinkedWorkItemStruct>) addedOrRemovedItems;
+        links.forEach(
+            linkStruct -> {
+              ILinkRoleOpt linkRole = linkStruct.getLinkRole();
+              if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
+                WorkItemFieldDiff fieldChange =
+                    new LinkFieldDiff(
+                        fieldDiff.getFieldName(),
+                        linkRole.getId(),
+                        linkRole.getName(),
+                        LinkDirection.OUT);
+                List<String> single = new ArrayList<String>(1);
+                single.add(linkStruct.getLinkedItem().getId());
+                if (isAdded) {
+                  fieldChange.setElementsAdded(single);
+                } else {
+                  fieldChange.setElementsRemoved(single);
                 }
-              });
+                fieldChanges.add(fieldChange);
+                updateOppositeLinksMap(
+                    workItemId, workItemChange.getRevision(), linkStruct, isAdded);
+              }
+            });
+      }
+    } else if (Utils.isCollectionApprovalStructList(addedOrRemovedItems)) {
+      // If the collection is a list of ApprovalStruct, we also treat them specifically
+      WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+      if (isAdded) {
+        fieldChange.setElementsAdded(Utils.castApprovalsToStrList(addedOrRemovedItems));
+      } else {
+        fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(addedOrRemovedItems));
+      }
+      fieldChanges.add(fieldChange);
+    } else if (!Utils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
+      WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+      try {
+        if (isAdded) {
+          fieldChange.setElementsAdded(
+              Utils.castCollectionToStrList((List<IPObject>) addedOrRemovedItems));
+        } else {
+          fieldChange.setElementsRemoved(
+              Utils.castCollectionToStrList((List<IPObject>) addedOrRemovedItems));
         }
-      } else if (Utils.isCollectionApprovalStructList(removed)) {
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(removed));
-        fieldChanges.add(fieldChange);
-      } else if (!Utils.isCollectionLinkedWorkItemStructList(removed)) {
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        try {
-          fieldChange.setElementsRemoved(Utils.castCollectionToStrList((List<IPObject>) removed));
-        } catch (ClassCastException ex) {
-          // For now, when a removed element/value is not among the ones we're supposed
-          // to support in Teamscale, we simply add as an empty string array.
-          // Alternatively, we could ignore the field as a change
-          // (skip the field from the output)
+      } catch (ClassCastException ex) {
+        // For now, when an added/removed element/value is not among the ones we're supposed
+        // to support in Teamscale, we simply add as an empty string array.
+        // Alternatively, we could ignore the field as a change
+        // (skip the field from the json output)
+        if (isAdded) {
+          fieldChange.setElementsAdded(new ArrayList<String>());
+        } else {
           fieldChange.setElementsRemoved(new ArrayList<String>());
         }
-        fieldChanges.add(fieldChange);
       }
-      if (!fieldChanges.isEmpty()) {
-        workItemChange.addFieldChanges(fieldChanges);
-      }
+      fieldChanges.add(fieldChange);
+    }
+    if (!fieldChanges.isEmpty()) {
+      workItemChange.addFieldChanges(fieldChanges);
     }
   }
 
@@ -719,7 +710,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    * @param added is true if this a list of added links, otherwise these are removed links *
    */
   private void updateOppositeLinksMap(
-      String workItemId, String revision, ILinkedWorkItemStruct link, boolean added) {
+      String workItemId, String revision, ILinkedWorkItemStruct link, boolean isAdded) {
 
     // For each link struct, get the WI id, check if there's an entry in the map
     // if there is, check if there's a link of same type, action (added/removed), and revision
@@ -730,7 +721,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     if (linkBundles == null) {
       reverse =
           new LinkBundle(
-              added,
+              isAdded,
               new LinkedWorkItem(
                   workItemId,
                   link.getLinkRole().getId(),
@@ -741,10 +732,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       newLinkBundles.add(reverse);
       backwardLinksTobeAdded.put(link.getLinkedItem().getId(), newLinkBundles);
     } else {
-      if (!alreadyHasLinkBundle(linkBundles, link, revision, added)) {
+      if (!alreadyHasLinkBundle(linkBundles, link, revision, isAdded)) {
         reverse =
             new LinkBundle(
-                added,
+                isAdded,
                 new LinkedWorkItem(
                     workItemId,
                     link.getLinkRole().getId(),
