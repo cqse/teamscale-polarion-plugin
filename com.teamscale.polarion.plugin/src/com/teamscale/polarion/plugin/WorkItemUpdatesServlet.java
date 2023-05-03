@@ -16,6 +16,7 @@ import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.PermissionDeniedException;
 import com.polarion.platform.service.repository.AccessDeniedException;
+import com.polarion.platform.service.repository.ResourceException;
 import com.teamscale.polarion.plugin.model.LinkBundle;
 import com.teamscale.polarion.plugin.model.LinkFieldDiff;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
@@ -126,7 +127,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       // Check if the request params are valid IDs before putting them into the SQL query
       if (validateParameters(projId, spaceId, docId)) {
 
-        // Resetting these Servlet global maps.
         backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
         allItemsToSend = new HashMap<String, WorkItemForJson>();
 
@@ -144,6 +144,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     } catch (AccessDeniedException accessDenied) {
       logger.error("Access denied raised by Polarion", accessDenied);
       res.sendError(HttpServletResponse.SC_FORBIDDEN);
+    } catch (ResourceException resourceException) {
+      logger.error(
+          "Cannot fulfill request. Failed to process histoy for WorkItem "
+              + resourceException.getResource(),
+          resourceException);
+      res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -248,7 +254,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    * query. Additionally, it returns all work item Ids that are valid in the database at the moment
    * (after lastUpdate). That return will be used to pass this list of Ids to the response. *
    */
-  private Collection<String> retrieveChanges(String projId, String spaceId, String docId) {
+  private Collection<String> retrieveChanges(String projId, String spaceId, String docId)
+      throws ResourceException {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
 
@@ -455,7 +462,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   /** Main method that will process the work item history based on the parameters in the request */
-  private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService) {
+  private WorkItemForJson processHistory(IWorkItem workItem, IDataService dataService)
+      throws ResourceException {
 
     // Short circuit for performance reasons, don't need to make Polarion fetch history
     if (Integer.valueOf(workItem.getLastRevision()) <= Integer.valueOf(lastUpdate)) {
@@ -502,9 +510,15 @@ public class WorkItemUpdatesServlet extends HttpServlet {
          * No history. Empty list. From Polarion JavaDoc: "An empty list is returned if the object
          * does not support history retrieval."
          * "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
+         *
+         * <p>Since we're grabbing WIs (and they support history retrieval), as far as we can tell
+         * from Polarion docs, this else will never execute. If for some reason it does happen, we
+         * throw an a runtime exception. The rationale is: if we cannot return the history of an
+         * item, it's better to not fulfill the request and return a server error rather than
+         * skipping the item and returning a state that does not necessarily reflect the work item
+         * history which can potentially lead to inconsistencies on the client side.
          */
-        // Since we're grabbing WIs (and they support history retrieval), as far as we can tell from
-        // Polarion docs, this else will never execute.
+        throw new ResourceException(workItem.getLocation());
       }
     }
     return workItemForJson;
@@ -765,16 +779,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     return false;
   }
 
-  /** Binary search to cut down the search space since the list is ordered in ascending order* */
+  /** Binary search to cut down the search space since the list is ordered in ascending order */
   private int searchIndexWorkItemHistory(IPObjectList<IWorkItem> workItemHistory) {
 
-    if (workItemHistory == null) return -1;
+    if (workItemHistory == null) throw new NullPointerException();
 
-    Integer lastUpdateInt = Integer.valueOf(lastUpdate);
-    Integer endRevisionInt = Integer.valueOf(endRevision);
-    Integer lastItemRevision =
+    int lastUpdateInt = Integer.valueOf(lastUpdate);
+    int endRevisionInt = Integer.valueOf(endRevision);
+    int lastItemRevision =
         Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
-    Integer firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
+    int firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
 
     // Short circuit: don't need to binarysearch if you're looking for all history
     if (lastUpdateInt <= 0) return 0;
