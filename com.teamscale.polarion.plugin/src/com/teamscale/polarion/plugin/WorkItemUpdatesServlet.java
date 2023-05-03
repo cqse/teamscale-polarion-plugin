@@ -18,9 +18,11 @@ import com.polarion.platform.security.PermissionDeniedException;
 import com.polarion.platform.service.repository.AccessDeniedException;
 import com.polarion.platform.service.repository.ResourceException;
 import com.teamscale.polarion.plugin.model.LinkBundle;
+import com.teamscale.polarion.plugin.model.LinkDirection;
 import com.teamscale.polarion.plugin.model.LinkFieldDiff;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.Response;
+import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
@@ -325,7 +327,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                 .getLinkedWorkItems()
                 .forEach(
                     linkedWorkItem -> {
-                      if (linkedWorkItem.getLinkDirection().equals(Utils.LinkDirection.OUT)
+                      if (linkedWorkItem.getLinkDirection().equals(LinkDirection.OUT)
                           && allItemsToSend.get(linkedWorkItem.getId()) != null) {
 
                         ILinkRoleOpt linkRole = linkNamesMap.get(linkedWorkItem.getLinkRoleId());
@@ -334,7 +336,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                                 workItemId,
                                 linkRole.getId(),
                                 linkRole.getOppositeName(),
-                                Utils.LinkDirection.IN);
+                                LinkDirection.IN);
                         List<LinkedWorkItem> oppositeEntries =
                             oppositeLinksMap.get(linkedWorkItem.getId());
                         if (oppositeEntries != null) {
@@ -452,7 +454,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Create the work item object as DELETED */
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
-    WorkItemForJson item = new WorkItemForJson(workItem.getId(), Utils.UpdateType.DELETED);
+    WorkItemForJson item = new WorkItemForJson(workItem.getId(), UpdateType.DELETED);
     // Note: Items in the recycle bin can still undergo changes. For instance, if
     // any of their field values change, or their links, or even if their module changes id,
     // it'll generate a new revision and changes will be tracked by Polarion.
@@ -625,7 +627,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                           fieldDiff.getFieldName(),
                           linkRole.getId(),
                           linkRole.getName(),
-                          Utils.LinkDirection.OUT);
+                          LinkDirection.OUT);
                   List<String> singleAdded = new ArrayList<String>(1);
                   singleAdded.add(linkStruct.getLinkedItem().getId());
                   fieldChange.setElementsAdded(singleAdded);
@@ -675,7 +677,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                           fieldDiff.getFieldName(),
                           linkRole.getId(),
                           linkRole.getName(),
-                          Utils.LinkDirection.OUT);
+                          LinkDirection.OUT);
                   List<String> singleAdded = new ArrayList<String>(1);
                   singleAdded.add(linkStruct.getLinkedItem().getId());
                   fieldChange.setElementsRemoved(singleAdded);
@@ -737,7 +739,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                   workItemId,
                   link.getLinkRole().getId(),
                   link.getLinkRole().getOppositeName(),
-                  Utils.LinkDirection.IN),
+                  LinkDirection.IN),
               revision);
       List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
       newLinkBundles.add(reverse);
@@ -751,7 +753,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                     workItemId,
                     link.getLinkRole().getId(),
                     link.getLinkRole().getOppositeName(),
-                    Utils.LinkDirection.IN),
+                    LinkDirection.IN),
                 revision);
         linkBundles.add(reverse);
       }
@@ -772,7 +774,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       if (linkBundle.getRevision().equals(revision)
           && linkBundle.isAdded() == added
           && linkBundle.getLinkedWorkItem().getLinkRoleId().equals(linkStruct.getLinkRole().getId())
-          && linkBundle.getLinkedWorkItem().getLinkDirection().equals(Utils.LinkDirection.IN)
+          && linkBundle.getLinkedWorkItem().getLinkDirection().equals(LinkDirection.IN)
           && linkBundle.getLinkedWorkItem().getId().equals(linkStruct.getLinkedItem().getId())) {
         return true;
       }

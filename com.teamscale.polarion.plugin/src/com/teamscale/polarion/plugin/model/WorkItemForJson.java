@@ -1,6 +1,5 @@
 package com.teamscale.polarion.plugin.model;
 
-import com.teamscale.polarion.plugin.utils.Utils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,7 +12,7 @@ import java.util.List;
 public class WorkItemForJson {
 
   private String id;
-  private Utils.UpdateType updateType;
+  private UpdateType updateType;
   private String revision;
   private String description;
   private String created; // date-time format, ex: '1970-01-01T00:00:00Z'
@@ -52,7 +51,7 @@ public class WorkItemForJson {
     this.id = id;
   }
 
-  public WorkItemForJson(String id, Utils.UpdateType updateType) {
+  public WorkItemForJson(String id, UpdateType updateType) {
     this.id = id;
     this.updateType = updateType;
   }
@@ -65,11 +64,11 @@ public class WorkItemForJson {
     this.id = workItemId;
   }
 
-  public Utils.UpdateType getUpdateType() {
+  public UpdateType getUpdateType() {
     return updateType;
   }
 
-  public void setUpdateType(Utils.UpdateType updateType) {
+  public void setUpdateType(UpdateType updateType) {
     this.updateType = updateType;
   }
 

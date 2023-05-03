@@ -1,7 +1,5 @@
 package com.teamscale.polarion.plugin.model;
 
-import com.teamscale.polarion.plugin.utils.Utils;
-
 /**
  * Model class that represents a LinkedWorkItem containing the id of the linked WorkItem and the
  * link role id. Note: In Polarion the link role id might be different than link role user-facing
@@ -11,10 +9,10 @@ public class LinkedWorkItem {
   private String id;
   private String linkRoleId;
   private String linkRoleName;
-  private Utils.LinkDirection linkDirection;
+  private LinkDirection linkDirection;
 
   public LinkedWorkItem(
-      String id, String linkRoleId, String linkRoleName, Utils.LinkDirection linkDirection) {
+      String id, String linkRoleId, String linkRoleName, LinkDirection linkDirection) {
     this.id = id;
     this.linkRoleId = linkRoleId;
     this.linkRoleName = linkRoleName;
@@ -45,11 +43,11 @@ public class LinkedWorkItem {
     this.linkRoleName = linkRoleName;
   }
 
-  public Utils.LinkDirection getLinkDirection() {
+  public LinkDirection getLinkDirection() {
     return linkDirection;
   }
 
-  public void setLinkDirection(Utils.LinkDirection linkDirection) {
+  public void setLinkDirection(LinkDirection linkDirection) {
     this.linkDirection = linkDirection;
   }
 

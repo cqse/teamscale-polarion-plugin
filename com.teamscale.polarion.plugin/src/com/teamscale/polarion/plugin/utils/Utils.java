@@ -15,7 +15,9 @@ import com.polarion.core.util.types.duration.DurationTime;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.subterra.base.location.ILocation;
+import com.teamscale.polarion.plugin.model.LinkDirection;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
+import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,16 +32,6 @@ import java.util.stream.Collectors;
 public class Utils {
 
   public static String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
-
-  public enum UpdateType {
-    UPDATED,
-    DELETED
-  }
-
-  public enum LinkDirection {
-    IN,
-    OUT
-  }
 
   public static WorkItemForJson castWorkItem(
       IWorkItem workItem,
