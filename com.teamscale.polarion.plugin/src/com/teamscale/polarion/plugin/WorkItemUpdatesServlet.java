@@ -64,10 +64,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   private String[] includeLinkRoles;
 
   /** Base revision # for the request */
-  private String lastUpdate;
+  private int lastUpdate;
 
   /** End revision # to indicate the final revision (included) the request is looking for */
-  private String endRevision;
+  private int endRevision;
 
   /**
    * List of possible types the result can have. If empty, items of all types should be included.
@@ -109,8 +109,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     String spaceId = (String) req.getAttribute("space");
     String docId = (String) req.getAttribute("document");
 
-    lastUpdate = req.getParameter("lastUpdate");
-    endRevision = req.getParameter("endRevision");
+    String lastUpdateStr = req.getParameter("lastUpdate");
+    String endRevisionStr = req.getParameter("endRevision");
 
     workItemTypes = req.getParameterValues("includedWorkItemTypes");
 
@@ -118,7 +118,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
 
-    if (!processRevisionNumbers()) {
+    if (!processRevisionNumbers(lastUpdateStr, endRevisionStr)) {
       String msg = "Invalid revision numbers. Review lastUpdate and" + " endRevision parameters.";
       logger.info(msg);
       res.sendError(HttpServletResponse.SC_BAD_REQUEST, msg);
@@ -172,21 +172,24 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     doGet(req, resp);
   }
 
-  private boolean processRevisionNumbers() {
-    if (lastUpdate == null) {
-      lastUpdate = "0"; // process from beginning
-    } else if (!validateRevisionNumberString(lastUpdate)) {
+  private boolean processRevisionNumbers(String lastUpdateStr, String endRevisionStr) {
+    if (lastUpdateStr == null) {
+      lastUpdateStr = "0"; // process from beginning
+    } else if (!validateRevisionNumberString(lastUpdateStr)) {
       return false;
     }
+    lastUpdate = Integer.parseInt(lastUpdateStr);
 
-    if (endRevision == null) {
+    if (endRevisionStr == null) {
       // process all the way to HEAD
-      endRevision = String.valueOf(Integer.MAX_VALUE);
-    } else if (!validateRevisionNumberString(endRevision)) {
+      endRevision = Integer.MAX_VALUE;
+    } else if (!validateRevisionNumberString(endRevisionStr)) {
       return false;
+    } else {
+      endRevision = Integer.parseInt(endRevisionStr);
     }
 
-    return (Integer.valueOf(lastUpdate) < Integer.valueOf(endRevision));
+    return (lastUpdate < endRevision);
   }
 
   private void sendResponse(HttpServletResponse resp, Collection<String> allValidItems)
@@ -278,7 +281,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     for (IWorkItem workItem : workItems) {
 
       // Only check history if there were changes after lastUpdate
-      if (Integer.valueOf(workItem.getLastRevision()) > Integer.valueOf(lastUpdate)) {
+      if (Integer.valueOf(workItem.getLastRevision()) > lastUpdate) {
 
         WorkItemForJson workItemForJson;
 
@@ -448,8 +451,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   private boolean shouldIncludeItemFromRecybleBin(IWorkItem workItem) {
     Integer workItemLastRevision = Integer.parseInt(workItem.getLastRevision());
 
-    return (workItemLastRevision > Integer.parseInt(lastUpdate)
-        && workItemLastRevision <= Integer.parseInt(endRevision));
+    return (workItemLastRevision > lastUpdate && workItemLastRevision <= endRevision);
   }
 
   /** Create the work item object as DELETED */
@@ -469,7 +471,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       throws ResourceException {
 
     // Short circuit for performance reasons, don't need to make Polarion fetch history
-    if (Integer.valueOf(workItem.getLastRevision()) <= Integer.valueOf(lastUpdate)) {
+    if (Integer.valueOf(workItem.getLastRevision()) <= lastUpdate) {
       return null;
     }
 
@@ -480,7 +482,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
         // No changes in history when size == 1 (the WI remains as created)
         // We then return only if the item was created within the revision boundaries of the request
-        if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= Integer.valueOf(endRevision))
+        if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision)
           workItemForJson =
               Utils.castWorkItem(
                   workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap);
@@ -492,6 +494,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
          * Then, we get the last one from the history as the current revision
          */
         int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory);
+
+        if (lastUpdateIndex < 0) return null;
+
         IDiffManager diffManager = dataService.getDiffManager();
         Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
         int endIndex =
@@ -539,21 +544,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       IDiffManager diffManager,
       int lastUpdateIndex) {
 
-    /**
-     * Short circuit: no changes to look for. Defensive code, just in case, since we're already
-     * checking requested revision numbers here @{link #processRevisionNumbers()} *
-     */
-    if (lastUpdateIndex < 0) return -1;
-
-    Integer lastUpdateInt = Integer.valueOf(lastUpdate);
-    Integer endRevisionInt = Integer.valueOf(endRevision);
-
     int index = lastUpdateIndex;
     int next = index + 1;
     while (next < workItemHistory.size()
-        && Integer.valueOf(workItemHistory.get(next).getRevision()) <= endRevisionInt) {
+        && Integer.valueOf(workItemHistory.get(next).getRevision()) <= endRevision) {
 
-      if (Integer.valueOf(workItemHistory.get(next).getRevision()) > lastUpdateInt) {
+      if (Integer.valueOf(workItemHistory.get(next).getRevision()) > lastUpdate) {
         IFieldDiff[] fieldDiffs =
             diffManager.generateDiff(
                 workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
@@ -611,7 +607,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
         fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(added));
         fieldChanges.add(fieldChange);
-        // Then we check if they're ILiknedWorkItemStruc, because, again,
+        // Then we check if they're ILiknedWorkItemStruct, because, again,
         // Polarion treats those 'struct' objects differently thank regular
         // IPObjects
       } else if (includeLinkRoles != null && Utils.isCollectionLinkedWorkItemStructList(added)) {
@@ -787,20 +783,18 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     if (workItemHistory == null) throw new NullPointerException();
 
-    int lastUpdateInt = Integer.valueOf(lastUpdate);
-    int endRevisionInt = Integer.valueOf(endRevision);
     int lastItemRevision =
         Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
     int firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
 
     // Short circuit: don't need to binarysearch if you're looking for all history
-    if (lastUpdateInt <= 0) return 0;
+    if (lastUpdate <= 0) return 0;
 
     // Short circuit: don't need to search if lastUpdate points to the last version of the item
-    if (lastItemRevision == lastUpdateInt) return workItemHistory.size() - 1;
+    if (lastItemRevision == lastUpdate) return workItemHistory.size() - 1;
 
     // Short circuit: don't search if all changes are before lastUpdate or after endRevision
-    if (lastItemRevision < lastUpdateInt || firstItemVersion > endRevisionInt) return -1;
+    if (lastItemRevision < lastUpdate || firstItemVersion > endRevision) return -1;
 
     int left = 0;
     int right = workItemHistory.size() - 1;
@@ -808,9 +802,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     while (left <= right) {
       int mid = (left + right) / 2;
-      if (Integer.valueOf(workItemHistory.get(mid).getRevision()) < lastUpdateInt) {
+      if (Integer.valueOf(workItemHistory.get(mid).getRevision()) < lastUpdate) {
         left = mid + 1;
-      } else if (Integer.valueOf(workItemHistory.get(mid).getRevision()) == lastUpdateInt) {
+      } else if (Integer.valueOf(workItemHistory.get(mid).getRevision()) == lastUpdate) {
         // When all changes came after the lastUpdate and endRevision
         if (firstItemVersion == Integer.valueOf(workItemHistory.get(mid).getRevision())) {
           return -1;
@@ -822,9 +816,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       }
     }
 
-    // When the item changed before lastUpdate and afterEndRevision
-    if (Integer.valueOf(workItemHistory.get(index).getRevision()) < lastUpdateInt
-        || Integer.valueOf(workItemHistory.get(index).getRevision()) > endRevisionInt) {
+    // When the item changed before lastUpdate and after endRevision
+    if (Integer.valueOf(workItemHistory.get(index).getRevision()) < lastUpdate
+        || Integer.valueOf(workItemHistory.get(index).getRevision()) > endRevision) {
       return -1;
     }
 
