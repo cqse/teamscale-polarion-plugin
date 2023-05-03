@@ -117,8 +117,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
 
     if (!processRevisionNumbers()) {
-      logger.info("Invalid revision numbers. Review the lastUpdate and" + " endRevision strings.");
-      res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
+      String msg = "Invalid revision numbers. Review lastUpdate and" + " endRevision parameters.";
+      logger.info(msg);
+      res.sendError(HttpServletResponse.SC_BAD_REQUEST, msg);
       return;
     }
 
