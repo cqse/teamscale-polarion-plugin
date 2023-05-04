@@ -6,10 +6,10 @@ import java.util.Collection;
 public class Response {
 
   /** All items present (not deleted) in the latest revision of the proj/folder/doc */
-  Collection<String> allItemsIds;
+  private final Collection<String> allItemsIds;
 
   /** All items that have changed in the proj/folder/doc given (lastUpdate, endRevision] */
-  Collection<WorkItemForJson> workItems;
+  private final Collection<WorkItemForJson> workItems;
 
   /**
    * Clients can detected deleted items by running a diff as follows: 1) build a set (A) of items
@@ -19,19 +19,16 @@ public class Response {
    * revision. Note that (B) can have more items than (A) if new items were created since lastUpdate
    * revision.
    */
+  public Response(Collection<String> allItemsIds, Collection<WorkItemForJson> workItems) {
+    this.allItemsIds = allItemsIds;
+    this.workItems = workItems;
+  }
+
   public Collection<String> getAllItemsIds() {
     return allItemsIds;
   }
 
-  public void setAllItemsIds(Collection<String> allItemsIds) {
-    this.allItemsIds = allItemsIds;
-  }
-
   public Collection<WorkItemForJson> getWorkItems() {
     return workItems;
-  }
-
-  public void setAllWorkItemsForJson(Collection<WorkItemForJson> workItems) {
-    this.workItems = workItems;
   }
 }

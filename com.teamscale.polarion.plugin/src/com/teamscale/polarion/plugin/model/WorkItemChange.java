@@ -10,36 +10,29 @@ import java.util.Collection;
 public class WorkItemChange {
 
   /** the revision after the change */
-  private String revision;
+  private final String revision;
 
   private Collection<WorkItemFieldDiff> fieldChanges;
 
+  public WorkItemChange(String revision, Collection<WorkItemFieldDiff> fieldChanges) {
+    this.revision = revision;
+    this.fieldChanges = fieldChanges;
+  }
+
   public WorkItemChange(String revision) {
     this.revision = revision;
-    fieldChanges = new ArrayList<WorkItemFieldDiff>();
+    this.fieldChanges = new ArrayList<WorkItemFieldDiff>();
   }
 
   public String getRevision() {
     return revision;
   }
 
-  public void setRevision(String revision) {
-    this.revision = revision;
-  }
-
   public void addFieldChange(WorkItemFieldDiff fieldChange) {
     fieldChanges.add(fieldChange);
   }
 
-  public void addFieldChanges(Collection<WorkItemFieldDiff> fieldChanges) {
-    this.fieldChanges.addAll(fieldChanges);
-  }
-
   public Collection<WorkItemFieldDiff> getFieldChanges() {
     return fieldChanges;
-  }
-
-  public void setFieldChanges(Collection<WorkItemFieldDiff> changes) {
-    fieldChanges = changes;
   }
 }

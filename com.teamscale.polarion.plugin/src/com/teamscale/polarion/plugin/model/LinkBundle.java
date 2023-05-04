@@ -4,7 +4,7 @@ package com.teamscale.polarion.plugin.model;
  * This is a helper object that maintains link data and is used to process and generate opposite
  * link changes in the plugin. *
  */
-public final class LinkBundle {
+public class LinkBundle {
 
   /** Whether this is an added or removed link */
   private final boolean added;

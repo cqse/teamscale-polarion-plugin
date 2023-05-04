@@ -196,9 +196,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       throws ServletException, IOException {
     Gson gson = new Gson();
 
-    Response response = new Response();
-    response.setAllWorkItemsForJson(allItemsToSend.values());
-    response.setAllItemsIds(allValidItems);
+    Response response = new Response(allValidItems, allItemsToSend.values());
 
     String jsonResult = gson.toJson(response);
     resp.setContentType("application/json");
@@ -408,7 +406,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Helper method for {@link #createLinkChangesOppositeEntries}. */
   private WorkItemChange findRevisionEntry(
-      Collection<WorkItemChange> workItemChanges, LinkBundle linkBundle) {
+      final Collection<WorkItemChange> workItemChanges, LinkBundle linkBundle) {
 
     if (workItemChanges == null) return null;
 
@@ -422,7 +420,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Helper method for {@link #createLinkChangesOppositeEntries}. */
   private WorkItemFieldDiff findFieldChangeEntry(
-      WorkItemChange workItemChange, LinkBundle linkBundle) {
+      final WorkItemChange workItemChange, LinkBundle linkBundle) {
     for (WorkItemFieldDiff fieldChangeEntry : workItemChange.getFieldChanges()) {
       if (fieldChangeEntry.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)
           && fieldChangeEntry instanceof LinkFieldDiff
@@ -571,21 +569,24 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    */
   private WorkItemChange collectFieldChanges(
       String workItemId, IFieldDiff[] fieldDiffs, String revision) {
-    WorkItemChange workItemChange = new WorkItemChange(revision);
 
-    if (fieldDiffs == null) return null;
+    if (fieldDiffs == null || fieldDiffs.length == 0) return null;
+
+    List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
 
     for (IFieldDiff fieldDiff : fieldDiffs) {
       if (fieldDiff.isCollection()) {
-        collectFieldDiffAsCollection(workItemId, workItemChange, fieldDiff);
+        fieldChanges.addAll(collectFieldDiffAsCollection(workItemId, revision, fieldDiff));
       } else {
-        WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
-        fieldChange.setFieldValueBefore(Utils.castFieldValueToString(fieldDiff.getBefore()));
-        fieldChange.setFieldValueAfter(Utils.castFieldValueToString(fieldDiff.getAfter()));
-        workItemChange.addFieldChange(fieldChange);
+        WorkItemFieldDiff fieldChange =
+            new WorkItemFieldDiff(
+                fieldDiff.getFieldName(),
+                Utils.castFieldValueToString(fieldDiff.getBefore()),
+                Utils.castFieldValueToString(fieldDiff.getAfter()));
+        fieldChanges.add(fieldChange);
       }
     }
-    return workItemChange;
+    return new WorkItemChange(revision, fieldChanges);
   }
 
   /**
@@ -593,28 +594,33 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    * Rather then having a 'before value' replaced by an 'after value' Polarion returns these fields
    * with elements that were added or removed in the revision. *
    */
-  private void collectFieldDiffAsCollection(
-      String workItemId, WorkItemChange workItemChange, IFieldDiff fieldDiff) {
+  private List<WorkItemFieldDiff> collectFieldDiffAsCollection(
+      String workItemId, String workItemChangeRevision, IFieldDiff fieldDiff) {
 
     // Polarion returns unparameterized Collections for these two methods
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
+    List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
     if (added != null && !added.isEmpty()) {
-      collectFieldDiffAsCollection(added, workItemId, workItemChange, fieldDiff, true);
+      fieldChanges.addAll(
+          collectFieldDiffAsCollection(added, workItemId, workItemChangeRevision, fieldDiff, true));
     }
     if (removed != null && !removed.isEmpty()) {
-      collectFieldDiffAsCollection(removed, workItemId, workItemChange, fieldDiff, false);
+      fieldChanges.addAll(
+          collectFieldDiffAsCollection(
+              removed, workItemId, workItemChangeRevision, fieldDiff, false));
     }
+    return fieldChanges;
   }
 
   /**
    * This is an overload of the helper {@see #collectFieldDiffAsCollection(String, WorkItemChange, IFieldDiff)
    * that applies to either added or removed items from fields that are treated as collections in Polarion
    * */
-  private void collectFieldDiffAsCollection(
+  private List<WorkItemFieldDiff> collectFieldDiffAsCollection(
       Collection addedOrRemovedItems,
       String workItemId,
-      WorkItemChange workItemChange,
+      String workItemChangeRevision,
       IFieldDiff fieldDiff,
       boolean isAdded) {
 
@@ -655,8 +661,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
                   fieldChange.setElementsRemoved(single);
                 }
                 fieldChanges.add(fieldChange);
-                updateOppositeLinksMap(
-                    workItemId, workItemChange.getRevision(), linkStruct, isAdded);
+                updateOppositeLinksMap(workItemId, workItemChangeRevision, linkStruct, isAdded);
               }
             });
       }
@@ -692,9 +697,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       }
       fieldChanges.add(fieldChange);
     }
-    if (!fieldChanges.isEmpty()) {
-      workItemChange.addFieldChanges(fieldChanges);
-    }
+
+    return fieldChanges;
   }
 
   /**
