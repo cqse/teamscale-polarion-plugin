@@ -39,7 +39,11 @@ public class WorkItemUpdatesCollector {
    */
   private final String[] includeCustomFields;
 
-  /** If empty, no work item links should be included. We expect role IDs (not role names) */
+  /**
+   * If empty, no work item links should be included. We expect role IDs (not role names). Invalid
+   * (not recognized) link role IDs will be ignored. If all link roles are invalid, the request will
+   * be processed as if no linkRoles were requested (as if this field was empty).
+   */
   private final String[] includeLinkRoles;
 
   /** This is used to keep a map of linkRoleIds to its in/out link names */
@@ -63,7 +67,6 @@ public class WorkItemUpdatesCollector {
     this.endRevision = endRevision;
     this.includeCustomFields = includeCustomFields;
     this.includeLinkRoles = includeLinkRoles;
-    //    this.backwardLinksTobeAdded = backwardLinksTobeAdded;
     backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
   }
 

@@ -7,11 +7,14 @@ import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IDataService;
+import com.polarion.platform.persistence.IEnumOption;
+import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.PermissionDeniedException;
 import com.polarion.platform.service.repository.AccessDeniedException;
 import com.polarion.platform.service.repository.ResourceException;
+import com.polarion.subterra.base.data.model.TypeFactory;
 import com.teamscale.polarion.plugin.model.Response;
 import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
@@ -19,9 +22,12 @@ import com.teamscale.polarion.plugin.utils.PluginLogger;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -45,7 +51,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private IModule module;
 
-  /** If empty, no work item links should be included. We expect role IDs (not role names) */
+  /**
+   * If empty, no work item links should be included. For the values, we expect role IDs (not role
+   * names)
+   */
   private String[] includeLinkRoles;
 
   /** Base revision # for the request */
@@ -178,6 +187,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     out.print(jsonResult);
   }
 
+  /**
+   * To avoid SQL injection issues or any unexpected behavior, check if the variable pieces injected
+   * in this query are valid. See what we do in the following method: {@link
+   * WorkItemUpdatesServlet#validateParameters(String, String, String)}
+   */
   private String buildSqlQuery(String projId, String spaceId, String docId) {
 
     StringBuilder sqlQuery = new StringBuilder("select * from WORKITEM WI ");
@@ -318,15 +332,17 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   /**
-   * This method validates these required request attributes. Split into three separate helper
-   * methods, one for each param.
+   * This method validates the required request path attributes plus the optional includedLinkRoles
+   * query parameter.
    */
   private boolean validateParameters(String projectId, String space, String doc) {
     // Needs to be executed in this order. Space validation only runs after projectId is validated.
     // DocId is validated only if projectId and SpaceId are validated.
+    // And linkRoles are validated only after document is valid (module is defined).
     return validateProjectId(projectId)
         && validateSpaceId(projectId, space)
-        && validateDocumentId(projectId, space, doc);
+        && validateDocumentId(projectId, space, doc)
+        && validateLinkRoles();
   }
 
   private boolean validateProjectId(String projectId) {
@@ -376,6 +392,57 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       }
     }
     logger.info("Not possible to find document with id: " + docId);
+    return false;
+  }
+
+  private boolean validateLinkRoles() {
+    if (includeLinkRoles == null) {
+      // an empty list of linkRoles is valid.
+      return true;
+    }
+
+    if (module == null) {
+      logger.error(
+          "Unable to retrieve list of workitem link roles because module is still undefined");
+      return false;
+    }
+
+    IEnumeration<IEnumOption> linkRolesEnum;
+    try {
+      // This Polarion method getEnumerationForEnumId returns an unparameterized IEnumeration
+      // which we parameterize to IEnumeration<IEnumOption>, that's why we add the try/catch
+      linkRolesEnum =
+          module
+              .getDataSvc()
+              .getEnumerationForEnumId(
+                  TypeFactory.getInstance().getEnumType("workitem-link-role"),
+                  module.getContextId());
+    } catch (ClassCastException classCastException) {
+      logger.error("Unable to retrieve list of workitem link roles", classCastException);
+      return false;
+    }
+
+    if (linkRolesEnum == null) {
+      logger.error("Unable to retrieve list of workitem link roles");
+      return false;
+    }
+
+    List<IEnumOption> allLinkRoles = linkRolesEnum.getAllOptions();
+    if (allLinkRoles != null && !allLinkRoles.isEmpty()) {
+      List<String> allLinkRolesStrList =
+          allLinkRoles.stream().map(linkRole -> linkRole.getId()).collect(Collectors.toList());
+      String[] newLinkRolesList =
+          Arrays.asList(includeLinkRoles).stream()
+              .filter(linkRole -> allLinkRolesStrList.contains(linkRole))
+              .toArray(String[]::new);
+      if (newLinkRolesList.length > 0) {
+        includeLinkRoles = newLinkRolesList;
+      } else {
+        includeLinkRoles = null;
+      }
+      return true;
+    }
+    // if there are not link roles set up then we cannot validate the requested linkRoles
     return false;
   }
 }
