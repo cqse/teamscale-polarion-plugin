@@ -30,3 +30,13 @@ dependencies {
     	'lib/javax.servlet_4.0.0.jar'
 	) 
 }
+
+jar {
+    from('webapp/WEB-INF') {
+        into('webapp/WEB-INF')
+    }
+    manifest {
+        from 'META-INF/MANIFEST.MF'
+    }
+    
+}
