@@ -9,7 +9,6 @@ import com.polarion.alm.tracker.model.IHyperlinkStruct;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
-import com.polarion.alm.tracker.model.ITestSteps;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.types.duration.DurationTime;
 import com.polarion.platform.persistence.IEnumOption;
@@ -279,9 +278,8 @@ public class Utils {
       return ((IEnumOption) value).getName(); // Or should it be getId()?
     } else if (value instanceof java.util.Date) {
       return ((java.util.Date) value).toInstant().toString();
-    } else if (value instanceof DurationTime) return ((DurationTime) value).toString();
-    else if (value instanceof ITestSteps) {
-      return value.toString();
+    } else if (value instanceof DurationTime) {
+      return ((DurationTime) value).toString();
     } else {
       return value.toString();
     }

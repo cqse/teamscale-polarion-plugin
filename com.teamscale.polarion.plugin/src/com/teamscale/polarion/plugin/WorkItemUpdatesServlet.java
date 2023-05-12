@@ -47,7 +47,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private final PluginLogger logger = new PluginLogger();
 
-  private ITrackerService trackerService =
+  private final ITrackerService trackerService =
       (ITrackerService) PlatformContext.getPlatform().lookupService(ITrackerService.class);
 
   private IModule module;
