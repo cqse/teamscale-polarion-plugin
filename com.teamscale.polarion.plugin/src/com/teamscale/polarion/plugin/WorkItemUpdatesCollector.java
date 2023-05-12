@@ -303,7 +303,7 @@ public class WorkItemUpdatesCollector {
                         linkRole.getId(),
                         linkRole.getName(),
                         LinkDirection.OUT);
-                List<String> single = new ArrayList<String>(1);
+                List<String> single = new ArrayList<>(1);
                 single.add(linkStruct.getLinkedItem().getId());
                 if (isAdded) {
                   fieldChange.setElementsAdded(single);

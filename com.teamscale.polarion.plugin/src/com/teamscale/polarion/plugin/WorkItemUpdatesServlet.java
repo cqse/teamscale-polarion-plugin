@@ -115,7 +115,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       // Check if the request params are valid IDs before putting them into the SQL query
       if (validateParameters(projId, spaceId, docId)) {
 
-        allItemsToSend = new HashMap<String, WorkItemForJson>();
+        allItemsToSend = new HashMap<>();
 
         Collection<String> allValidItemsLatest = retrieveChanges(projId, spaceId, docId);
         sendResponse(res, allValidItemsLatest);
@@ -254,7 +254,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     IDataService dataService = trackerService.getDataService();
 
-    Collection<String> allValidsItemsLatest = new ArrayList<String>();
+    Collection<String> allValidsItemsLatest = new ArrayList<>();
 
     long timeBefore = System.currentTimeMillis();
 

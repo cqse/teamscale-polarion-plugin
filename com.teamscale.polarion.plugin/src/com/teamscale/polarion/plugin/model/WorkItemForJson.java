@@ -344,7 +344,7 @@ public class WorkItemForJson {
 
   public void addWorkItemChange(WorkItemChange workItemChange) {
     if (workItemChanges == null) {
-      workItemChanges = new ArrayList<WorkItemChange>();
+      workItemChanges = new ArrayList<>();
     }
     workItemChanges.add(workItemChange);
   }

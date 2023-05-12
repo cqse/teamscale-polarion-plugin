@@ -137,7 +137,7 @@ public class Utils {
   }
 
   public static List<String> castHyperlinksToStrList(Collection hyperlinks) {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     if (isCollectionHyperlinkStructList(hyperlinks)) {
       try {
         List<IHyperlinkStruct> collection = (List<IHyperlinkStruct>) hyperlinks;
@@ -154,7 +154,7 @@ public class Utils {
   }
 
   public static List<String> castLinkedWorkItemsToStrList(Collection linkedItems) {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     if (isCollectionLinkedWorkItemStructList(linkedItems)) {
       try {
         List<ILinkedWorkItemStruct> collection = (List<ILinkedWorkItemStruct>) linkedItems;
@@ -170,7 +170,7 @@ public class Utils {
   }
 
   public static List<String> castApprovalsToStrList(Collection approvals) {
-    List<String> result = new ArrayList<String>();
+    List<String> result = new ArrayList<>();
     if (isCollectionApprovalStructList(approvals)) {
       try {
         List<IApprovalStruct> collection = (List<IApprovalStruct>) approvals;
@@ -235,7 +235,7 @@ public class Utils {
 
     targetSet.retainAll(customFields);
 
-    HashMap<String, Object> converted = new HashMap<String, Object>(targetSet.size());
+    HashMap<String, Object> converted = new HashMap<>(targetSet.size());
     targetSet.forEach(
         fieldName -> {
           converted.put(fieldName, castCustomFieldValue(workItem.getCustomField(fieldName)));
