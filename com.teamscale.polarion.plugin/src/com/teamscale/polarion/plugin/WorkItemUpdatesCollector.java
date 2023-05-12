@@ -356,12 +356,12 @@ public class WorkItemUpdatesCollector {
    * generate a change/field diff for the opposite end of the link. So, we need to generate those
    * link changes manually for receiving end.
    *
-   * @param	workItemId represents the link origin. On the map, this id will be the receiver
+   * @param workItemId represents the link origin. On the map, this id will be the receiver
    *     (reverse)
-   * @param	revision represents the revision number when the link changed (added/removed)
-   * @param	link that represent a ILinkWorkItemStruct given by Polarion containing the added/removed
+   * @param revision represents the revision number when the link changed (added/removed)
+   * @param link that represent a ILinkWorkItemStruct given by Polarion containing the added/removed
    *     link
-   * @param	isAdded is true if this a list of added links, otherwise these are removed links *
+   * @param isAdded is true if this a list of added links, otherwise these are removed links *
    */
   private void updateOppositeLinksMap(
       String workItemId, String revision, ILinkedWorkItemStruct link, boolean isAdded) {
