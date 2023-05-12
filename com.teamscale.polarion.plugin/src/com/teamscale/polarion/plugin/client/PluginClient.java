@@ -79,16 +79,14 @@ public class PluginClient {
   }
 
   public String formatUrlEncodedParams(Map<String, String> paramsMap) {
-    String params =
-        paramsMap.entrySet().stream()
-            .map(
-                entry ->
-                    Stream.of(
-                            URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8),
-                            URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
-                        .collect(Collectors.joining("=")))
-            .collect(Collectors.joining("&"));
-    return params;
+    return paramsMap.entrySet().stream()
+        .map(
+            entry ->
+                Stream.of(
+                        URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8),
+                        URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8))
+                    .collect(Collectors.joining("=")))
+        .collect(Collectors.joining("&"));
   }
 
   public HttpResponse<?> postLoginRequest() throws IOException, InterruptedException {
@@ -106,21 +104,16 @@ public class PluginClient {
 
     System.out.println("csrfToken: " + csrfToken);
 
-    HttpResponse<?> response =
-        this.sendPostFormUrlEncodedRequest(
-            PluginClient.POLARION_BASE_URL + PluginClient.POLARION_PWD_AUTH_URL, params);
-
-    return response;
+    return this.sendPostFormUrlEncodedRequest(
+        PluginClient.POLARION_BASE_URL + PluginClient.POLARION_PWD_AUTH_URL, params);
   }
 
   public HttpResponse<?> sendWorkItemUpdatesGetRequest() throws IOException, InterruptedException {
-    HttpResponse<?> response =
-        this.sendGetRequest(
-            PluginClient.POLARION_BASE_URL
-                + PluginClient.POLARION_TEAMSCALE_URL_PATH
-                + PluginClient.WI_UPDATES_URL_PATH,
-            "");
-    return response;
+    return this.sendGetRequest(
+        PluginClient.POLARION_BASE_URL
+            + PluginClient.POLARION_TEAMSCALE_URL_PATH
+            + PluginClient.WI_UPDATES_URL_PATH,
+        "");
   }
 
   private HttpResponse<?> sendPostFormUrlEncodedRequest(String url, String params)

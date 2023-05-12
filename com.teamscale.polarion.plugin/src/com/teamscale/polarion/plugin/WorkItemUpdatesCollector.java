@@ -51,7 +51,7 @@ public class WorkItemUpdatesCollector {
   private final String[] includeLinkRoles;
 
   /** This is used to keep a map of linkRoleIds to its in/out link names */
-  private final Map<String, ILinkRoleOpt> linkNamesMap = new HashMap<String, ILinkRoleOpt>();
+  private final Map<String, ILinkRoleOpt> linkNamesMap = new HashMap<>();
 
   /**
    * This is to generate changes in the json result related to backward links, since Polarion
@@ -67,7 +67,7 @@ public class WorkItemUpdatesCollector {
     this.endRevision = endRevision;
     this.includeCustomFields = includeCustomFields;
     this.includeLinkRoles = includeLinkRoles;
-    backwardLinksTobeAdded = new HashMap<String, List<LinkBundle>>();
+    backwardLinksTobeAdded = new HashMap<>();
   }
 
   /** Main method that will process the work item history based on the parameters in the request */
@@ -102,7 +102,7 @@ public class WorkItemUpdatesCollector {
         if (lastUpdateIndex < 0) return null;
 
         IDiffManager diffManager = dataService.getDiffManager();
-        Collection<WorkItemChange> workItemChanges = new ArrayList<WorkItemChange>();
+        Collection<WorkItemChange> workItemChanges = new ArrayList<>();
         int endIndex =
             collectWorkItemChanges(
                 workItemChanges, workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
@@ -200,7 +200,7 @@ public class WorkItemUpdatesCollector {
       if (Integer.valueOf(workItemHistory.get(next).getRevision()) > lastUpdate) {
         IFieldDiff[] fieldDiffs =
             diffManager.generateDiff(
-                workItemHistory.get(index), workItemHistory.get(next), new HashSet<String>());
+                workItemHistory.get(index), workItemHistory.get(next), new HashSet<>());
         WorkItemChange fieldChangesToAdd =
             collectFieldChanges(workItemId, fieldDiffs, workItemHistory.get(next).getRevision());
         if (fieldChangesToAdd != null) {
@@ -222,7 +222,7 @@ public class WorkItemUpdatesCollector {
 
     if (fieldDiffs == null || fieldDiffs.length == 0) return null;
 
-    List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
+    List<WorkItemFieldDiff> fieldChanges = new ArrayList<>();
 
     for (IFieldDiff fieldDiff : fieldDiffs) {
       if (fieldDiff.isCollection()) {
@@ -250,7 +250,7 @@ public class WorkItemUpdatesCollector {
     // Polarion returns unparameterized Collections for these two methods
     Collection added = fieldDiff.getAdded();
     Collection removed = fieldDiff.getRemoved();
-    List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
+    List<WorkItemFieldDiff> fieldChanges = new ArrayList<>();
     if (added != null && !added.isEmpty()) {
       fieldChanges.addAll(
           collectFieldDiffAsCollection(added, workItemId, workItemChangeRevision, fieldDiff, true));
@@ -274,7 +274,7 @@ public class WorkItemUpdatesCollector {
       IFieldDiff fieldDiff,
       boolean isAdded) {
 
-    List<WorkItemFieldDiff> fieldChanges = new ArrayList<WorkItemFieldDiff>();
+    List<WorkItemFieldDiff> fieldChanges = new ArrayList<>();
     // We check if the collection is hyperlink list first since they're not
     // convertible into IPObjectList. So, we treat them separately.
     if (Utils.isCollectionHyperlinkStructList(addedOrRemovedItems)) {
@@ -340,9 +340,9 @@ public class WorkItemUpdatesCollector {
         // Alternatively, we could ignore the field as a change
         // (skip the field from the json output)
         if (isAdded) {
-          fieldChange.setElementsAdded(new ArrayList<String>());
+          fieldChange.setElementsAdded(new ArrayList<>());
         } else {
-          fieldChange.setElementsRemoved(new ArrayList<String>());
+          fieldChange.setElementsRemoved(new ArrayList<>());
         }
       }
       fieldChanges.add(fieldChange);
@@ -382,7 +382,7 @@ public class WorkItemUpdatesCollector {
                   link.getLinkRole().getOppositeName(),
                   LinkDirection.IN),
               revision);
-      List<LinkBundle> newLinkBundles = new ArrayList<LinkBundle>();
+      List<LinkBundle> newLinkBundles = new ArrayList<>();
       newLinkBundles.add(reverse);
       backwardLinksTobeAdded.put(link.getLinkedItem().getId(), newLinkBundles);
     } else {
@@ -430,8 +430,7 @@ public class WorkItemUpdatesCollector {
    * helpful for us to select specific requested links.
    */
   public void createOppositeLinkEntries(final Map<String, WorkItemForJson> allItemsToSend) {
-    Map<String, List<LinkedWorkItem>> oppositeLinksMap =
-        new HashMap<String, List<LinkedWorkItem>>();
+    Map<String, List<LinkedWorkItem>> oppositeLinksMap = new HashMap<>();
 
     allItemsToSend.forEach(
         (workItemId, workItemForJson) -> {
@@ -458,7 +457,7 @@ public class WorkItemUpdatesCollector {
                         if (oppositeEntries != null) {
                           oppositeEntries.add(newEntry);
                         } else {
-                          List<LinkedWorkItem> singleEntryList = new ArrayList<LinkedWorkItem>();
+                          List<LinkedWorkItem> singleEntryList = new ArrayList<>();
                           singleEntryList.add(newEntry);
                           oppositeLinksMap.put(linkedWorkItem.getId(), singleEntryList);
                         }
