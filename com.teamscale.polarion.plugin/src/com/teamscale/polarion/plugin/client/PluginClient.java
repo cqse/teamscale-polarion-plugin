@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.validation.constraints.NotNull;
 
 /**
  * This client class was created for debugging purposes only.
@@ -192,7 +191,7 @@ public class PluginClient {
     }
   }
 
-  public boolean isAuthRequired(@NotNull HttpResponse<?> response) {
+  public boolean isAuthRequired(HttpResponse<?> response) {
     if (response == null) return false;
 
     Map<String, List<String>> headersMap = response.headers().map();

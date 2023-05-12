@@ -1,2 +1,12 @@
 /bin/
 *.jar
+/target/
+/lib/
+.settings/*
+.project
+.classpath
+/build/
+.gradle/
+gradle/
+gradlew
+gradlew.bat

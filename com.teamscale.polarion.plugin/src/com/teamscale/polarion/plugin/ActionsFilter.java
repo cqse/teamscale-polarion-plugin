@@ -1,12 +1,11 @@
 package com.teamscale.polarion.plugin;
 
-import com.polarion.core.util.logging.ILogger;
-import com.polarion.core.util.logging.Logger;
 import com.polarion.portal.tomcat.servlets.DoAsFilter;
+import com.teamscale.polarion.plugin.utils.PluginLogger;
+
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -15,9 +14,7 @@ import javax.servlet.http.HttpServletResponse;
 
 public class ActionsFilter extends DoAsFilter implements Filter {
 
-  private static final ILogger logger = Logger.getLogger(ActionsFilter.class);
-
-  public void init(FilterConfig fConfig) throws ServletException {}
+  private final PluginLogger logger = new PluginLogger();
 
   @Override
   public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
@@ -29,13 +26,13 @@ public class ActionsFilter extends DoAsFilter implements Filter {
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
       } else {
-        logger.info("[Teamscale Polarion Plugin] 404, Resource not found.");
+        logger.info("404, Resource not found.");
         ((HttpServletResponse) res)
             .sendError(
                 HttpServletResponse.SC_NOT_FOUND, "The requested resource or action is not found");
       }
     } else {
-      logger.info("[Teamscale Polarion Plugin] This service supports only HTTP(s) requests.");
+      logger.info("This service supports only HTTP(s) requests.");
       throw new ServletException("This service supports only HTTP(s) requests.");
     }
   }

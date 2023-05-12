@@ -25,6 +25,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * This is a helper class for the main servlet class. 
+ * This class provides a series of functionalities to process work item history
+ * and data generation for the response.
+ * */
 public class WorkItemUpdatesCollector {
 
   /** Base revision # for the request */
@@ -47,7 +52,7 @@ public class WorkItemUpdatesCollector {
   private final String[] includeLinkRoles;
 
   /** This is used to keep a map of linkRoleIds to its in/out link names */
-  private Map<String, ILinkRoleOpt> linkNamesMap = new HashMap<String, ILinkRoleOpt>();
+  private final Map<String, ILinkRoleOpt> linkNamesMap = new HashMap<String, ILinkRoleOpt>();
 
   /**
    * This is to generate changes in the json result related to backward links, since Polarion
@@ -59,7 +64,6 @@ public class WorkItemUpdatesCollector {
   public WorkItemUpdatesCollector(
       int lastUpdate,
       int endRevision,
-      String[] workItemTypes,
       String[] includeCustomFields,
       String[] includeLinkRoles) {
 
@@ -141,16 +145,15 @@ public class WorkItemUpdatesCollector {
 
     if (workItemHistory == null) throw new NullPointerException();
 
-    int lastItemRevision =
-        Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
-    int firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
-
     // Short circuit: don't need to binarysearch if you're looking for all history
     if (lastUpdate <= 0) return 0;
 
+    int lastItemRevision =
+            Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
     // Short circuit: don't need to search if lastUpdate points to the last version of the item
     if (lastItemRevision == lastUpdate) return workItemHistory.size() - 1;
 
+    int firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
     // Short circuit: don't search if all changes are before lastUpdate or after endRevision
     if (lastItemRevision < lastUpdate || firstItemVersion > endRevision) return -1;
 

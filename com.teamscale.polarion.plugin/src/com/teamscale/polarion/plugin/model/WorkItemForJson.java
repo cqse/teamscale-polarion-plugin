@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This class represents the final WorkItem object to be serialized to json which then goes in the
@@ -36,7 +37,7 @@ public class WorkItemForJson {
   private String moduleId;
   private String moduleTitle;
   private String projectId;
-  private HashMap<String, Object> customFields;
+  private Map<String, Object> customFields;
   private List<String> assignees;
   private List<String> attachments;
   private String author;
@@ -232,11 +233,11 @@ public class WorkItemForJson {
     this.updated = updated;
   }
 
-  public HashMap<String, Object> getCustomFields() {
+  public Map<String, Object> getCustomFields() {
     return customFields;
   }
 
-  public void setCustomFields(HashMap<String, Object> customFields) {
+  public void setCustomFields(Map<String, Object> customFields) {
     this.customFields = customFields;
   }
 

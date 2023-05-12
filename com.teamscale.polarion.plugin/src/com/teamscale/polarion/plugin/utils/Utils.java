@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 public class Utils {
 
-  public static String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
+  public static final String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
 
   public static WorkItemForJson castWorkItem(
       IWorkItem workItem,
@@ -274,7 +274,7 @@ public class Utils {
     if (value == null) {
       return "";
     } else if (value instanceof String) {
-      return (String) value;
+      return value;
     } else if (value instanceof IEnumOption) {
       return ((IEnumOption) value).getName(); // Or should it be getId()?
     } else if (value instanceof java.util.Date) {

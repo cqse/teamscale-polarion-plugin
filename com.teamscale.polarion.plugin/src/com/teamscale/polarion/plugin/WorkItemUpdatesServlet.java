@@ -44,7 +44,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  private PluginLogger logger = new PluginLogger();
+  private final PluginLogger logger = new PluginLogger();
 
   private ITrackerService trackerService =
       (ITrackerService) PlatformContext.getPlatform().lookupService(ITrackerService.class);
@@ -266,7 +266,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     WorkItemUpdatesCollector workItemUpdatesCollector =
         new WorkItemUpdatesCollector(
-            lastUpdate, endRevision, workItemTypes, includeCustomFields, includeLinkRoles);
+            lastUpdate, endRevision, includeCustomFields, includeLinkRoles);
 
     for (IWorkItem workItem : workItems) {
 
