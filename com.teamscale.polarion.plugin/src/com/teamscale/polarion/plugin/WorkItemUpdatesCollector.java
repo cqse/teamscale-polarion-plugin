@@ -26,10 +26,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This is a helper class for the main servlet class. 
- * This class provides a series of functionalities to process work item history
- * and data generation for the response.
- * */
+ * This is a helper class for the main servlet class. This class provides a series of
+ * functionalities to process work item history and data generation for the response.
+ */
 public class WorkItemUpdatesCollector {
 
   /** Base revision # for the request */
@@ -62,10 +61,7 @@ public class WorkItemUpdatesCollector {
   private Map<String, List<LinkBundle>> backwardLinksTobeAdded;
 
   public WorkItemUpdatesCollector(
-      int lastUpdate,
-      int endRevision,
-      String[] includeCustomFields,
-      String[] includeLinkRoles) {
+      int lastUpdate, int endRevision, String[] includeCustomFields, String[] includeLinkRoles) {
 
     this.lastUpdate = lastUpdate;
     this.endRevision = endRevision;
@@ -149,7 +145,7 @@ public class WorkItemUpdatesCollector {
     if (lastUpdate <= 0) return 0;
 
     int lastItemRevision =
-            Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
+        Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
     // Short circuit: don't need to search if lastUpdate points to the last version of the item
     if (lastItemRevision == lastUpdate) return workItemHistory.size() - 1;
 

@@ -2,7 +2,6 @@ package com.teamscale.polarion.plugin;
 
 import com.polarion.portal.tomcat.servlets.DoAsFilter;
 import com.teamscale.polarion.plugin.utils.PluginLogger;
-
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
