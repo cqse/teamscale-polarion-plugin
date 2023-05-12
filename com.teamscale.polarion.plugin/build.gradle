@@ -38,5 +38,6 @@ jar {
     manifest {
         from 'META-INF/MANIFEST.MF'
     }
+    exclude('com/teamscale/polarion/plugin/client')     
     
 }

@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -429,11 +430,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     List<IEnumOption> allLinkRoles = linkRolesEnum.getAllOptions();
     if (allLinkRoles != null && !allLinkRoles.isEmpty()) {
-      List<String> allLinkRolesStrList =
-          allLinkRoles.stream().map(linkRole -> linkRole.getId()).collect(Collectors.toList());
+      Set<String> allLinkRolesStrSet =
+          allLinkRoles.stream().map(linkRole -> linkRole.getId()).collect(Collectors.toSet());
       String[] newLinkRolesList =
           Arrays.asList(includeLinkRoles).stream()
-              .filter(linkRole -> allLinkRolesStrList.contains(linkRole))
+              .filter(linkRole -> allLinkRolesStrSet.contains(linkRole))
               .toArray(String[]::new);
       if (newLinkRolesList.length > 0) {
         includeLinkRoles = newLinkRolesList;
