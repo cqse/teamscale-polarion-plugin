@@ -4,9 +4,9 @@ import com.polarion.core.util.logging.ILogger;
 import com.polarion.core.util.logging.Logger;
 
 /**
- * This class servers as a wrapper in order to provide some customization
- * to the Teamscale plugin on top of Polarion logger.
- * */
+ * This class servers as a wrapper in order to provide some customization to the Teamscale plugin on
+ * top of Polarion logger.
+ */
 public class PluginLogger implements ILogger {
 
   private final ILogger logger = Logger.getLogger(PluginLogger.class);
