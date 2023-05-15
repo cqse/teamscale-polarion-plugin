@@ -11,6 +11,12 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+/**
+ * Custom servlet filter that'll do basic checks before the servlet kicks in, such as checking if
+ * the requested URL contains the at least the required elements in the path. Then, it sets the
+ * required request attributes (project, space, module) as separate string objects for the servlet
+ * to use.
+ */
 public class ActionsFilter extends DoAsFilter implements Filter {
 
   private final PluginLogger logger = new PluginLogger();

@@ -32,6 +32,10 @@ public class Utils {
 
   public static final String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
 
+  /**
+   * Takes a Polarion work item object and converts to a model object that will be further
+   * serialized into json.
+   */
   public static WorkItemForJson castWorkItem(
       IWorkItem workItem,
       String[] includeCustomFields,
@@ -172,6 +176,9 @@ public class Utils {
     return workItemForJson;
   }
 
+  /**
+   * Takes a raw collection of Polarion hyperlinks and converts to a list of strings (link URIs).
+   */
   public static List<String> castHyperlinksToStrList(Collection hyperlinks) {
     List<String> result = new ArrayList<>();
     if (isCollectionHyperlinkStructList(hyperlinks)) {
@@ -189,6 +196,10 @@ public class Utils {
     return result;
   }
 
+  /**
+   * Takes a raw collection of Polarion linkStructs and converts to a list of strings (the linked
+   * items IDs).
+   */
   public static List<String> castLinkedWorkItemsToStrList(Collection linkedItems) {
     List<String> result = new ArrayList<>();
     if (isCollectionLinkedWorkItemStructList(linkedItems)) {
@@ -205,6 +216,10 @@ public class Utils {
     return result;
   }
 
+  /**
+   * Takes a raw collection of Polarion approvalStructs and converts to a list of strings (the users
+   * IDs).
+   */
   public static List<String> castApprovalsToStrList(Collection approvals) {
     List<String> result = new ArrayList<>();
     if (isCollectionApprovalStructList(approvals)) {
@@ -221,10 +236,7 @@ public class Utils {
     return result;
   }
 
-  /*
-   * This will return false if the list is empty,
-   * even if the list is of type IHyperlinkStruct
-   * */
+  /** This will return false if the list is empty, even if the list is of type IHyperlinkStruct */
   public static boolean isCollectionHyperlinkStructList(Collection collection) {
     if (collection instanceof List) {
       List<?> list = (List<?>) collection;
@@ -235,10 +247,10 @@ public class Utils {
     return false;
   }
 
-  /*
-   * This will return false if the list is empty,
-   * even if the list is of type ILinkedWorkedItemStruct
-   * */
+  /**
+   * This will return false if the list is empty, even if the list is of type
+   * ILinkedWorkedItemStruct
+   */
   public static boolean isCollectionLinkedWorkItemStructList(Collection collection) {
     if (collection instanceof List) {
       List<?> list = (List<?>) collection;
@@ -249,10 +261,7 @@ public class Utils {
     return false;
   }
 
-  /*
-   * This will return false if the list is empty,
-   * even if the list is of type IApprovalStruct
-   * */
+  /** This will return false if the list is empty, even if the list is of type IApprovalStruct */
   public static boolean isCollectionApprovalStructList(Collection collection) {
     if (collection instanceof List) {
       List<?> list = (List<?>) collection;
@@ -321,12 +330,19 @@ public class Utils {
     }
   }
 
+  /**
+   * Takes a collection of Polarion objects and converts to a list of strings (usually Ids). The
+   * else/ifs were initially added to give us flexibility to handle those conversions depending on
+   * the object specific type. For now, all of them are converted to Ids because all those cases are
+   * of type IUniqueObject (which has getId()) but not all IPObjects are necessarily IUniqueObjects
+   * in Polarion.
+   */
   public static List<String> castCollectionToStrList(List<IPObject> collection) {
     return collection.stream()
         .map(
             elem -> {
               if (elem instanceof ICategory) {
-                return ((ICategory) elem).getName();
+                return ((ICategory) elem).getId();
               } else if (elem instanceof IUser) {
                 return ((IUser) elem).getId();
               } else if (elem instanceof IAttachment) {

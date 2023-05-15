@@ -69,6 +69,9 @@ public class WorkItemFieldDiff {
     this.elementsRemoved = elementsRemoved;
   }
 
+  /**
+   * It'll add a single string element to the list of added values even if the list is empty/null
+   */
   public void addElementAdded(String elementAdded) {
     if (elementsAdded == null) {
       elementsAdded = new ArrayList<>();
@@ -76,6 +79,10 @@ public class WorkItemFieldDiff {
     elementsAdded.add(elementAdded);
   }
 
+  /**
+   * It'll remove a single string element from the list of removed values even if the list is
+   * empty/null
+   */
   public void addElementRemoved(String elementRemoved) {
     if (elementsRemoved == null) {
       elementsRemoved = new ArrayList<>();

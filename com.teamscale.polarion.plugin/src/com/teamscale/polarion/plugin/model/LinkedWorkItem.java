@@ -35,6 +35,7 @@ public class LinkedWorkItem {
     return linkDirection;
   }
 
+  /** LinkedWorkItem objects are compared by id */
   public boolean equals(Object linkedWorkItem) {
     if (linkedWorkItem instanceof LinkedWorkItem) {
       return (id.equals(((LinkedWorkItem) linkedWorkItem).getId()));

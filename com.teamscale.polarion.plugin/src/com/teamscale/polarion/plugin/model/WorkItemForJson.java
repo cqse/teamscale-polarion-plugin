@@ -294,6 +294,10 @@ public class WorkItemForJson {
     this.linkedWorkItems = linkedWorkItems;
   }
 
+  /**
+   * It'll add a one or more new LinkedWorkItem objects even if the list of linked items is
+   * empty/null
+   */
   public void addAllLinkedWorkItems(List<LinkedWorkItem> newLinkedWorkItems) {
     if (this.linkedWorkItems == null) {
       this.linkedWorkItems = newLinkedWorkItems;
@@ -342,6 +346,9 @@ public class WorkItemForJson {
     this.workItemChanges = workItemChanges;
   }
 
+  /**
+   * It'll add a single workItemChange object even if the list of work item changes is empty/null
+   */
   public void addWorkItemChange(WorkItemChange workItemChange) {
     if (workItemChanges == null) {
       workItemChanges = new ArrayList<>();
