@@ -185,12 +185,16 @@ public class PluginClient {
   }
 
   public boolean isAuthRequired(HttpResponse<?> response) {
-    if (response == null) return false;
+    if (response == null) {
+      return false;
+    }
 
     Map<String, List<String>> headersMap = response.headers().map();
     for (Map.Entry<String, List<String>> header : headersMap.entrySet()) {
       if (header.getKey().equals("x-com-ibm-team-repository-web-auth-msg")
-          && header.getValue().get(0).equals("authrequired")) return true;
+          && header.getValue().get(0).equals("authrequired")) {
+        return true;
+      }
     }
     return false;
   }

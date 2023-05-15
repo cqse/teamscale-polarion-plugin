@@ -86,10 +86,11 @@ public class WorkItemUpdatesCollector {
       if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
         // No changes in history when size == 1 (the WI remains as created)
         // We then return only if the item was created within the revision boundaries of the request
-        if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision)
+        if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
           workItemForJson =
               Utils.castWorkItem(
                   workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap);
+        }
       } else if (workItemHistory.size() > 1) {
         /**
          * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
@@ -99,7 +100,9 @@ public class WorkItemUpdatesCollector {
          */
         int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory);
 
-        if (lastUpdateIndex < 0) return null;
+        if (lastUpdateIndex < 0) {
+          return null;
+        }
 
         IDiffManager diffManager = dataService.getDiffManager();
         Collection<WorkItemChange> workItemChanges = new ArrayList<>();
@@ -140,16 +143,22 @@ public class WorkItemUpdatesCollector {
   private int searchIndexWorkItemHistory(IPObjectList<IWorkItem> workItemHistory) {
 
     // Short circuit: don't need to binarysearch if you're looking for all history
-    if (lastUpdate <= 0) return 0;
+    if (lastUpdate <= 0) {
+      return 0;
+    }
 
     int lastItemRevision =
         Integer.valueOf(workItemHistory.get(workItemHistory.size() - 1).getRevision());
     // Short circuit: don't need to search if lastUpdate points to the last version of the item
-    if (lastItemRevision == lastUpdate) return workItemHistory.size() - 1;
+    if (lastItemRevision == lastUpdate) {
+      return workItemHistory.size() - 1;
+    }
 
     int firstItemVersion = Integer.valueOf(workItemHistory.get(0).getRevision());
     // Short circuit: don't search if all changes are before lastUpdate or after endRevision
-    if (lastItemRevision < lastUpdate || firstItemVersion > endRevision) return -1;
+    if (lastItemRevision < lastUpdate || firstItemVersion > endRevision) {
+      return -1;
+    }
 
     int left = 0;
     int right = workItemHistory.size() - 1;
@@ -220,7 +229,9 @@ public class WorkItemUpdatesCollector {
   private WorkItemChange collectFieldChanges(
       String workItemId, IFieldDiff[] fieldDiffs, String revision) {
 
-    if (fieldDiffs == null || fieldDiffs.length == 0) return null;
+    if (fieldDiffs == null || fieldDiffs.length == 0) {
+      return null;
+    }
 
     List<WorkItemFieldDiff> fieldChanges = new ArrayList<>();
 
@@ -410,7 +421,10 @@ public class WorkItemUpdatesCollector {
       ILinkedWorkItemStruct linkStruct,
       String revision,
       boolean added) {
-    if (linkBundles == null) return false;
+    if (linkBundles == null) {
+      return false;
+    }
+
     for (LinkBundle linkBundle : linkBundles) {
       if (linkBundle.getRevision().equals(revision)
           && linkBundle.isAdded() == added
@@ -522,7 +536,9 @@ public class WorkItemUpdatesCollector {
   private WorkItemChange findRevisionEntry(
       final Collection<WorkItemChange> workItemChanges, LinkBundle linkBundle) {
 
-    if (workItemChanges == null) return null;
+    if (workItemChanges == null) {
+      return null;
+    }
 
     for (WorkItemChange workItemChange : workItemChanges) {
       if (workItemChange.getRevision().equals(linkBundle.getRevision())) {

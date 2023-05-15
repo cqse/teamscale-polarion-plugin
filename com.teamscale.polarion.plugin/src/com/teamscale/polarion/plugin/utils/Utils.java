@@ -39,69 +39,105 @@ public class Utils {
       Map<String, ILinkRoleOpt> linkNamesMap) {
 
     WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId(), UpdateType.UPDATED);
-    if (workItem.getRevision() != null) workItemForJson.setRevision(workItem.getRevision());
-    if (workItem.getDescription() != null)
+    if (workItem.getRevision() != null) {
+      workItemForJson.setRevision(workItem.getRevision());
+    }
+    if (workItem.getDescription() != null) {
       workItemForJson.setDescription(workItem.getDescription().getContent());
-    if (workItem.getCreated() != null)
+    }
+    if (workItem.getCreated() != null) {
       workItemForJson.setCreated(workItem.getCreated().toInstant().toString());
-    if (workItem.getDueDate() != null)
+    }
+    if (workItem.getDueDate() != null) {
       workItemForJson.setDueDate(workItem.getDueDate().getDate().toInstant().toString());
-    if (workItem.getInitialEstimate() != null)
+    }
+    if (workItem.getInitialEstimate() != null) {
       workItemForJson.setInitialEstimate(workItem.getInitialEstimate().toString());
-    if (workItem.getOutlineNumber() != null)
+    }
+    if (workItem.getOutlineNumber() != null) {
       workItemForJson.setOutlineNumber(workItem.getOutlineNumber());
-    if (workItem.getPlannedEnd() != null)
+    }
+    if (workItem.getPlannedEnd() != null) {
       workItemForJson.setPlannedEnd(workItem.getPlannedEnd().toInstant().toString());
-    if (workItem.getPlannedStart() != null)
+    }
+    if (workItem.getPlannedStart() != null) {
       workItemForJson.setPlannedStart(workItem.getPlannedStart().toInstant().toString());
+    }
     if (workItem.getPlannedIn() != null && !workItem.getPlannedIn().isEmpty()) {
       workItemForJson.setPlannedIn(
           workItem.getPlannedIn().stream()
               .map(plan -> plan.getId())
               .toArray(size -> new String[size]));
     }
-    if (workItem.getPriority() != null)
+    if (workItem.getPriority() != null) {
       workItemForJson.setPriority(workItem.getPriority().getName());
-    if (workItem.getRemainingEstimate() != null)
+    }
+    if (workItem.getRemainingEstimate() != null) {
       workItemForJson.setRemainingEstimate(workItem.getRemainingEstimate().toString());
-    if (workItem.getResolution() != null)
+    }
+    if (workItem.getResolution() != null) {
       workItemForJson.setResolution(workItem.getResolution().getName());
-    if (workItem.getResolvedOn() != null)
+    }
+    if (workItem.getResolvedOn() != null) {
       workItemForJson.setResolvedOn(workItem.getResolvedOn().toInstant().toString());
-    if (workItem.getSeverity() != null)
+    }
+    if (workItem.getSeverity() != null) {
       workItemForJson.setSeverity(workItem.getSeverity().getName());
-    if (workItem.getStatus() != null) workItemForJson.setStatus(workItem.getStatus().getName());
-    if (workItem.getTimeSpent() != null)
+    }
+    if (workItem.getStatus() != null) {
+      workItemForJson.setStatus(workItem.getStatus().getName());
+    }
+    if (workItem.getTimeSpent() != null) {
       workItemForJson.setTimeSpent(workItem.getTimeSpent().toString());
-    if (workItem.getTitle() != null) workItemForJson.setTitle(workItem.getTitle());
-    if (workItem.getType() != null) workItemForJson.setType(workItem.getType().getName());
-    if (workItem.getUpdated() != null)
+    }
+    if (workItem.getTitle() != null) {
+      workItemForJson.setTitle(workItem.getTitle());
+    }
+    if (workItem.getType() != null) {
+      workItemForJson.setType(workItem.getType().getName());
+    }
+    if (workItem.getUpdated() != null) {
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
-    if (workItem.getModule() != null) workItemForJson.setModuleId(workItem.getModule().getId());
-    if (workItem.getModule() != null)
+    }
+    if (workItem.getModule() != null) {
+      workItemForJson.setModuleId(workItem.getModule().getId());
+    }
+    if (workItem.getModule() != null) {
       workItemForJson.setModuleTitle(workItem.getModule().getTitleOrName());
-    if (workItem.getProjectId() != null) workItemForJson.setProjectId(workItem.getProjectId());
-    if (workItem.getAuthor() != null) workItemForJson.setAuthor(workItem.getAuthor().getId());
-    if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty())
+    }
+    if (workItem.getProjectId() != null) {
+      workItemForJson.setProjectId(workItem.getProjectId());
+    }
+    if (workItem.getAuthor() != null) {
+      workItemForJson.setAuthor(workItem.getAuthor().getId());
+    }
+    if (workItem.getWatchingUsers() != null && !workItem.getWatchingUsers().isEmpty()) {
       workItemForJson.setWatchers(castCollectionToStrList(workItem.getWatchingUsers()));
+    }
     if (includeCustomFields != null
         && includeCustomFields.length > 0
         && workItem.getCustomFieldsList() != null
-        && !workItem.getCustomFieldsList().isEmpty())
+        && !workItem.getCustomFieldsList().isEmpty()) {
       workItemForJson.setCustomFields(castCustomFields(workItem, includeCustomFields));
-    if (workItem.getAssignees() != null && !workItem.getAssignees().isEmpty())
+    }
+    if (workItem.getAssignees() != null && !workItem.getAssignees().isEmpty()) {
       workItemForJson.setAssignees(castCollectionToStrList(workItem.getAssignees()));
-    if (workItem.getAttachments() != null && !workItem.getAttachments().isEmpty())
+    }
+    if (workItem.getAttachments() != null && !workItem.getAttachments().isEmpty()) {
       workItemForJson.setAttachments(castCollectionToStrList(workItem.getAttachments()));
-    if (workItem.getCategories() != null && !workItem.getCategories().isEmpty())
+    }
+    if (workItem.getCategories() != null && !workItem.getCategories().isEmpty()) {
       workItemForJson.setCategories(castCollectionToStrList(workItem.getCategories()));
-    if (workItem.getHyperlinks() != null && !workItem.getHyperlinks().isEmpty())
+    }
+    if (workItem.getHyperlinks() != null && !workItem.getHyperlinks().isEmpty()) {
       workItemForJson.setHyperLinks(castHyperlinksToStrList(workItem.getHyperlinks()));
-    if (workItem.getComments() != null && !workItem.getComments().isEmpty())
+    }
+    if (workItem.getComments() != null && !workItem.getComments().isEmpty()) {
       workItemForJson.setComments(
           workItem.getComments().stream()
               .map(comment -> comment.getId())
               .toArray(size -> new String[size]));
+    }
     if (includeLinkRoles != null
         && includeLinkRoles.length > 0
         && workItem.getLinkedWorkItems() != null

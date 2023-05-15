@@ -70,12 +70,16 @@ public class WorkItemFieldDiff {
   }
 
   public void addElementAdded(String elementAdded) {
-    if (elementsAdded == null) elementsAdded = new ArrayList<>();
+    if (elementsAdded == null) {
+      elementsAdded = new ArrayList<>();
+    }
     elementsAdded.add(elementAdded);
   }
 
   public void addElementRemoved(String elementRemoved) {
-    if (elementsRemoved == null) elementsRemoved = new ArrayList<>();
+    if (elementsRemoved == null) {
+      elementsRemoved = new ArrayList<>();
+    }
     elementsRemoved.add(elementRemoved);
   }
 }
