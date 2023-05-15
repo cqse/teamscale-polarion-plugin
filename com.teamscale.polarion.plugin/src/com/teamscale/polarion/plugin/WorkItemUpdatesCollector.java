@@ -307,23 +307,14 @@ public class WorkItemUpdatesCollector {
         links.forEach(
             linkStruct -> {
               ILinkRoleOpt linkRole = linkStruct.getLinkRole();
-              if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
-                WorkItemFieldDiff fieldChange =
-                    new LinkFieldDiff(
-                        fieldDiff.getFieldName(),
-                        linkRole.getId(),
-                        linkRole.getName(),
-                        LinkDirection.OUT);
-                List<String> single = new ArrayList<>(1);
-                single.add(linkStruct.getLinkedItem().getId());
-                if (isAdded) {
-                  fieldChange.setElementsAdded(single);
-                } else {
-                  fieldChange.setElementsRemoved(single);
-                }
-                fieldChanges.add(fieldChange);
-                updateOppositeLinksMap(workItemId, workItemChangeRevision, linkStruct, isAdded);
-              }
+              createLinkFieldChange(
+                  fieldChanges,
+                  workItemId,
+                  workItemChangeRevision,
+                  fieldDiff,
+                  linkRole,
+                  linkStruct,
+                  isAdded);
             });
       }
     } else if (Utils.isCollectionApprovalStructList(addedOrRemovedItems)) {
@@ -360,6 +351,40 @@ public class WorkItemUpdatesCollector {
     }
 
     return fieldChanges;
+  }
+
+  /**
+   * Helper method for {@link #collectFieldDiffAsCollection(Collection, String, String, IFieldDiff,
+   * boolean)}. This method first checks if there's a match between the linkRole and list of all
+   * link roles expected by the request. If yes, it creates the link field diff and calls the {@link
+   * #updateOppositeLinksMap(String, String, ILinkedWorkItemStruct, boolean)}. It returns null if
+   * there isn't a match between the link role and the expected link roles from the request.
+   */
+  private void createLinkFieldChange(
+      List<WorkItemFieldDiff> fieldChanges,
+      String workItemId,
+      String workItemChangeRevision,
+      IFieldDiff fieldDiff,
+      ILinkRoleOpt linkRole,
+      ILinkedWorkItemStruct linkStruct,
+      boolean isAdded) {
+
+    if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
+      // Note: the link direction is always an out link (we don't need to check) since
+      // Polarion does not generate a fieldDiff for IN links.
+      WorkItemFieldDiff fieldChange =
+          new LinkFieldDiff(
+              fieldDiff.getFieldName(), linkRole.getId(), linkRole.getName(), LinkDirection.OUT);
+      List<String> single = new ArrayList<>(1);
+      single.add(linkStruct.getLinkedItem().getId());
+      if (isAdded) {
+        fieldChange.setElementsAdded(single);
+      } else {
+        fieldChange.setElementsRemoved(single);
+      }
+      fieldChanges.add(fieldChange);
+      updateOppositeLinksMap(workItemId, workItemChangeRevision, linkStruct, isAdded);
+    }
   }
 
   /**
@@ -466,15 +491,7 @@ public class WorkItemUpdatesCollector {
                                 linkRole.getId(),
                                 linkRole.getOppositeName(),
                                 LinkDirection.IN);
-                        List<LinkedWorkItem> oppositeEntries =
-                            oppositeLinksMap.get(linkedWorkItem.getId());
-                        if (oppositeEntries != null) {
-                          oppositeEntries.add(newEntry);
-                        } else {
-                          List<LinkedWorkItem> singleEntryList = new ArrayList<>();
-                          singleEntryList.add(newEntry);
-                          oppositeLinksMap.put(linkedWorkItem.getId(), singleEntryList);
-                        }
+                        addNewOppositeLinkEntry(oppositeLinksMap, newEntry, linkedWorkItem.getId());
                       }
                     });
           }
@@ -490,6 +507,26 @@ public class WorkItemUpdatesCollector {
             workItemForJson.addAllLinkedWorkItems(linkedWorkItems);
           }
         });
+  }
+
+  /**
+   * Helper method for {@link #createOppositeLinkEntries(Map)}. It'll help building the map by
+   * creating a opposite link entry (LinkedWorkItem) on an existing workItemId already in the map
+   * (adding a new entry to its existing list) or starting a new list with a single element
+   */
+  private void addNewOppositeLinkEntry(
+      Map<String, List<LinkedWorkItem>> oppositeLinksMap,
+      LinkedWorkItem newEntry,
+      String workItemId) {
+
+    List<LinkedWorkItem> oppositeEntries = oppositeLinksMap.get(workItemId);
+    if (oppositeEntries != null) {
+      oppositeEntries.add(newEntry);
+    } else {
+      List<LinkedWorkItem> singleEntryList = new ArrayList<>();
+      singleEntryList.add(newEntry);
+      oppositeLinksMap.put(workItemId, singleEntryList);
+    }
   }
 
   /**
@@ -551,6 +588,7 @@ public class WorkItemUpdatesCollector {
   /** Helper method for {@link #createLinkChangesOppositeEntries}. */
   private WorkItemFieldDiff findFieldChangeEntry(
       final WorkItemChange workItemChange, LinkBundle linkBundle) {
+
     for (WorkItemFieldDiff fieldChangeEntry : workItemChange.getFieldChanges()) {
       if (fieldChangeEntry.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)
           && fieldChangeEntry instanceof LinkFieldDiff

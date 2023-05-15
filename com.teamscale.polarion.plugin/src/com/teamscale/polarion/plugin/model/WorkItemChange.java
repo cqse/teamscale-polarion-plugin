@@ -21,7 +21,7 @@ public class WorkItemChange {
 
   public WorkItemChange(String revision) {
     this.revision = revision;
-    this.fieldChanges = new ArrayList<WorkItemFieldDiff>();
+    this.fieldChanges = new ArrayList<>();
   }
 
   public String getRevision() {
