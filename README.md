@@ -16,8 +16,8 @@ First of all, the plugin needs to be deployed in an existing Polarion instance. 
 Once Polarion is installed and running properly, see Section 4.4 (Deployment to Installed Polarion) in this [Polarion SDK documentation](https://almdemo.polarion.com/polarion/sdk/doc/sdk.pdf).
 Basically, the plugin jar file needs to be dropped in a specific Polarion plugins folder depending on your installation (e.g., /opt/polarion/polarion/plugins). If Polarion is already running when you drop the plugin jar, restarting the instance is necessary.
 
-Important note from Polarion documentation: "Servlets loaded by Polarion are cached in: [Polarion_Home]\data\workspace\.config. If this folder is not deleted before deploying a
-servlet extension (plugin) and restarting Polarion, then either the servlets will not be properly loaded, or the old ones will be loaded." In our experience, we did not have to manually delete the .config file, but keep that in mind if you need to debug odd behavior related to Polarion not picking up the right plugin version.
+Important note from Polarion documentation: "Servlets loaded by Polarion are cached in: [Polarion_Home]/data/workspace/.config. If this folder is not deleted before deploying a
+servlet extension (plugin) and restarting Polarion, then either the servlets will not be properly loaded, or the old ones will be loaded."
 
 ## How to build the dev environment and run the Plugin in dev/debug mode
 

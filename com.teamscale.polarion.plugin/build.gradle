@@ -35,6 +35,9 @@ jar {
     from('webapp/WEB-INF') {
         into('webapp/WEB-INF')
     }
+    from{
+        ["plugin.xml"]
+    }
     manifest {
         from 'META-INF/MANIFEST.MF'
     }
