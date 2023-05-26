@@ -27,7 +27,9 @@ public class ActionsFilter extends DoAsFilter implements Filter {
 
     if (req instanceof HttpServletRequest) {
       HttpServletRequest servletReq = (HttpServletRequest) req;
-      if (validatePath(servletReq.getServletPath())) {
+      if (isRequestToIsAlive(servletReq.getServletPath())) {
+        chain.doFilter(req, res);
+      } else if (validatePath(servletReq.getServletPath())) {
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
       } else {
@@ -59,9 +61,13 @@ public class ActionsFilter extends DoAsFilter implements Filter {
    * Five parts are expected for example: For this path:
    * /elibrary/MyDummySpace/MyDummyDoc/work-item-updates The split will be: ["", "library",
    * "MyDummySpace", "MyDummyDoc", "work-item-updates"] It takes an empty string before the first
-   * slash *
+   * slash
    */
   private boolean validatePath(String path) {
     return (path.endsWith("work-item-updates") && path.split("/").length == 5);
+  }
+
+  private boolean isRequestToIsAlive(String path) {
+    return (path.endsWith("is-alive") && path.split("/").length == 2);
   }
 }

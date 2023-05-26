@@ -32,7 +32,11 @@ public class PluginClient {
   public static final String POLARION_TEAMSCALE_URL_PATH = "api/teamscale/";
 
   public static final String WI_UPDATES_URL_PATH =
-      "elibrary/Testing/Test%20Specification/work-item-updates";
+      "elibrary/Testing/Test%20Specification/work-item-updates?"
+          + "lastUpdate=0&endRevision=20&includedWorkItemTypes=testcase&"
+          + "includedWorkItemCustomFields=testCaseID&includedWorkItemCustomFields=testType&"
+          + "includedWorkItemLinkRoles=verifies&includedWorkItemLinkRoles=parent&"
+          + "includedWorkItemLinkRoles=relates_to&includedWorkItemLinkRoles=duplicates";
 
   public static final String USERNAME_FORM_FIELD = "j_username";
 
@@ -148,7 +152,7 @@ public class PluginClient {
         HttpRequest.newBuilder(URI.create(url))
             .header("Accept", "*/*")
             .header("Accept-Language", "en-US,en;q=0.5")
-            .header("Origin", "teamscale://teamscale.polartion.plugin.client")
+            .header("Origin", "teamscale://teamscale.polarion.plugin.client")
             .header("Sec-Fetch-Dest", "empty")
             .header("Sec-Fetch-Mode", "cors")
             .header("Sec-Fetch-Site", "same-origin")
