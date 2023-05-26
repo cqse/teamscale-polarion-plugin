@@ -18,6 +18,10 @@ Once Polarion is installed and running properly, there are two steps to deploy t
    2. From Polarion documentation: _Servlets loaded by Polarion are cached in: [Polarion_Home]/data/workspace/.config. If this folder is not deleted before deploying a
 servlet extension (plugin) and restarting Polarion, then either the servlets will not be properly loaded, or the old ones will be loaded._ So, delete that caching folder and restart Polarion.
 
+Test if the plugin is running: go to the browser and access \<domain\>/polarion/api/teamscale/is-alive
+  - It should return an http 200 with the string _"Alive! I'm ready to crunch some work items!"_
+  - Otherwise, the plugin is not loaded or Polarion is down.
+
 ## How to build the dev environment and run the Plugin in dev/debug mode
 
 See Section 4.3 (Workspace Preparation) in this [Polarion SDK documentation](https://almdemo.polarion.com/polarion/sdk/doc/sdk.pdf).
