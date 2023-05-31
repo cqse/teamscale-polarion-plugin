@@ -48,7 +48,7 @@ All optional
  - includedWorkItemCustomFields: List of work item custom fields that should be included in the result. If empty, no custom fields should be present.
  - includedWorkItemLinkRoles: List of possible work item link role Ids that should be included in the result. If empty, no work item links should be included.
 
-**Revision numbers:** In Polarion, changes on documents and work items are version-controled by and embedded SVN engine. Therefore:
+**Revision numbers:** In Polarion, changes on documents and work items are version-controled by an embedded SVN engine. Therefore:
  - revision numbers are global and unique across projects of the same Polarion instance/installation
  - revision numbers are sequential and always positive
  - revision numbers are unique and grow by 1 for every change (aka transaction in SVN lingo)
@@ -59,7 +59,7 @@ All optional
 
 **Work item link changes:** Polarion does not generate a change/field diff for the opposite end of the link (the backward link). Still, this an interesting information to clients, so they can act upon link changes (since both ends are interfeered). Therefore, the plugin creates those field diffs for the backward links on top of what Polarion returns as changes for the forward links. In the example above, Polarion returns a field diff representing A links B (using the _parent_ link role), besides creating a change that represents that link from A to B, the plugin also creates a change (on the json output only, not in Polarion database) to represent a work item change in B (as B also links A via the _parent_ role).
 
-**Items moved to the recycle bin (soft deletion):** In Polarion, users can soft delete items by moving them to the [recycle bin](https://docs.plm.automation.siemens.com/content/polarion/19.3/help/en_US/user_and_administration_help/user_guide/work_with_documents/work_items_in_documents/work_item_recycle_bin.html). These items do not show up in documents (only if you open the recycle bin UI) but they're still valid items when we query the work item table in Polarion database (and consequently they're still related to the document in the database). As of now, the plugin only detects work item deletion if items are in the recycle bin. For [hard deletions](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/user_guide/work_items/work_item_actions/delete_work_items.html), the plugin is not currently able to detectem them. See next.
+**Items moved to the recycle bin (soft deletion):** In Polarion, users can soft delete items by moving them to the [recycle bin](https://docs.plm.automation.siemens.com/content/polarion/19.3/help/en_US/user_and_administration_help/user_guide/work_with_documents/work_items_in_documents/work_item_recycle_bin.html). These items do not show up in documents (only if you open the recycle bin UI) but they're still valid items when we query the work item table in Polarion database (and consequently they're still related to the document in the database). As of now, the plugin only detects work item deletion if items are in the recycle bin. For [hard deletions](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/user_guide/work_items/work_item_actions/delete_work_items.html), the plugin is not currently able to detect them since Polarion does not provide an API for that. See next.
 
 **Items deleted permanently:** We have not found a way to query [permanently deleted items](https://docs.plm.automation.siemens.com/content/polarion/20/help/en_US/user_and_administration_help/user_guide/work_items/work_item_actions/delete_work_items.html) utilizing the Polarion Java API. Therefore, the current solution is to leave that job to the client side. For that reason, every response the plugin sends back to the client contains a list of all work item ids that are valid (not deleted) at the moment. On the client side, applications can build some logic around that. For instance:
  - Client builds a set (A) of item ids known to the client before request
@@ -72,9 +72,9 @@ All optional
 The solution is thread safe. This Polarion plugin is implemented as a Java Servlet. Polarion utilizes the Apache Tomcat web container to run servlets. The Tomcat web container follows a multi-thread model, meaning that it creates a new thread per request directed to a any given servlet. Besides that, in the plugin, we do not utilize any shared data structures across different servlets from Polarion. Each request to the plugin servlet will run in a separate thread, which will query the database independently and work in its own data in memory.
 
 ## JSON Serialization
-We currently use the opensource library [Gson](https://github.com/google/gson) which already comes available in the Polarion installation.
+We currently use the opensource library [Gson](https://github.com/google/gson) which already comes available in the Polarion installation. We have not pulled this library externally. We utilize the version installed in the Polarion distribution.
 
-## Code formatting
+## Code Style/Formatting
 
 We are following the Java coding style guidelines from Google.
 
@@ -82,9 +82,15 @@ And we use [this opensource tool](https://github.com/google/google-java-format) 
 
 Also, we set up [this GitHub action](https://github.com/axel-op/googlejavaformat-action) to auto format the pushed code if need.
 
+## Code Quality
+
+Guess what we use? 
+
+We use [Teamscale](https://teamscale.com/) to analyze the code, check for quality related findings, and generate metric trend charts and dashboards. Access to Teamscale dashboards is only available to the internal Teamscale team, but all findings raised in a PR are visible to anyone.
+
 ## Test Cases
 
-The plugin implementation is tightly coupled with the Polarion data model and database, which makes the testability of the plugin really difficult. Automated tests would require a significant effort, so it's a TBD for now. In addition, the plugin code can be also tested on the client side using integration testing strategies.
+The plugin implementation is tightly coupled with the Polarion data model and database, which makes the testability of the plugin difficult. Automated tests require a significant effort, so we're still working on it. In addition, the plugin code can be also tested on the client side using integration testing strategies.
 
 Here some key test cases that we can do manually until we can automate them.
 
