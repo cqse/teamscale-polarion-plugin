@@ -30,6 +30,13 @@ Once the project is successfuly configured and building, follow instructions on 
 
 With that, you can run the local Polarion instance with the plugin deployed, and use it for debugging and development purposes.
 
+## What the Plugin does **NOT** do
+
+The Teamscale Polarion Plugin does not:
+ * Authenticate any user by itself. The plugin relies on the Polarion installation setup for authentication purposes. Unauthorized requests will bounce back by Polarion, so the plugin does not have to deal with authentication. That also means that client calling this servlet needs to implement authentication based on whatever authentication mechanism is supported in the Polarion installation on which the plugin is running.
+ * Write anything to the database. The plugin is read-only. It does not have any write functionality. 
+ * Paginate requests. Request pagination can be implemented in a future version.
+
 ## Assumptions, Design Decisions, and Design Implications Inherited from Polarion
 
 **Request path parameters:**
