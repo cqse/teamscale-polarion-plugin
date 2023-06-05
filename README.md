@@ -14,8 +14,9 @@ Other useful Polarion documentation:
 First of all, the plugin needs to be deployed in an existing Polarion instance. It is out of the scope of this documentation to provide instructions on how to install Polarion.
 
 Once Polarion is installed and running properly, there are two steps to deploy the plugin:
-   1. Drop the plugin jar file in the specific Polarion plugins folder. The plugins folder location depends on your installation (e.g., /opt/polarion/polarion/plugins). If Polarion is already running when you drop the plugin jar, restarting the instance is necessary. See next step.
-   2. From Polarion documentation: _Servlets loaded by Polarion are cached in: [Polarion_Home]/data/workspace/.config. If this folder is not deleted before deploying a
+   1. Download the released jar file available [here](https://github.com/cqse/teamscale-polarion-plugin/releases)
+   2. Drop the plugin jar file in the specific Polarion plugins folder. The plugins folder location depends on your installation (e.g., /opt/polarion/polarion/plugins). If Polarion is already running when you drop the plugin jar, restarting the instance is necessary. See next step.
+   3. From Polarion documentation: _Servlets loaded by Polarion are cached in: [Polarion_Home]/data/workspace/.config. If this folder is not deleted before deploying a
 servlet extension (plugin) and restarting Polarion, then either the servlets will not be properly loaded, or the old ones will be loaded._ So, delete that caching folder and restart Polarion.
 
 Test if the plugin is running: go to the browser and access \<domain\>/polarion/api/teamscale/is-alive
