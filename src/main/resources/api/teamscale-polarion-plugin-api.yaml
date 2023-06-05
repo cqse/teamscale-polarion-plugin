@@ -10,8 +10,6 @@ info:
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-security:
-  - bearerAuth: [ ]
 paths:
   /api/teamscale/{project}/{space}/{module}/work-item-updates:
     parameters:
@@ -41,7 +39,7 @@ paths:
         example: Project Scope
     get:
       description: |
-        Get all work item updates since the lastUpdate timestamp.
+        Get all work item updates since the lastUpdate revision number.
         The updates must also include all link changes for each link side, independent on which side the link was changed.
         For example, if the item ABC added a link to item DEF, the result must contain an update for ABC and DEF respectively.
         An exception applies if the other link side is not included in the general bounds (e.g. different project, in recycle bin etc.).
@@ -51,9 +49,15 @@ paths:
           schema:
             type: integer
           description: |
-            Timestamp of the last retrieval (as unix timestamp).
-            All updates since this timestamp shall be included in the response.
-            If omitted, all updates should be present.
+            Revision number of the last retrieval.
+            All updates after this revision shall be included in the response.
+            If omitted, all updates should be present since revision 1.
+        - name: endRevision
+          in: query
+          schema:
+            type: integer
+          description: |
+            Revision number that indicates the end revision the server should look for. All changes up to that revision (included). If not included in the request the server will consider changes up to the latest revision.          
         - name: includedWorkItemTypes
           in: query
           schema:
@@ -78,20 +82,6 @@ paths:
               type: string
           description: |
             List of possible work item link roles that should be included in the result. If empty, no work item links should be included.
-        - name: includeIgnoredChanges
-          in: query
-          schema:
-            type: boolean
-            default: false
-          description: |
-            Whether changes for not included custom fields and/or relations should still yield a change entry in the result.
-            This is required when e.g. the last update timestamp within a work item must always be up-to-date.
-        - name: continuationToken
-          in: query
-          schema:
-            type: string
-          description: |
-            Continuation token of a previous request to receive the next batch. If this is set, all other query parameters must not be set.
       responses:
         200:
           description: Successful update
@@ -105,332 +95,250 @@ paths:
           description: Unauthorized
         403:
           description: Forbidden
+        404:
+          description: Not Found 
 components:
   schemas:
     WorkItemUpdateResponse:
       type: object
       description: |
         Response type for work item update retrieval.
-        The result may be returned in multiple batches, indicated by the "lastBatch" and "continuationToken" parameters.
       properties:
-        values:
+        allItemsIds:
           type: array
-          description: The changes included in this batch.
+          description: Ids of all items valid in the document at its latest revision. Useful for the client to run a diff check to detect deletions.
           items:
-            $ref: '#/components/schemas/WorkItemChange'
-        lastBatch:
-          description: |
-            Whether this batch concludes the request and no further elements are present.
-            If this is "false" the "continuationToken" must be present
-          type: boolean
-        continuationToken:
-          description: |
-            Arbitrary token, that must be used to retrieve the next batch of updates if "lastBatch" is "false".
-          type: string
+              type: string
+        workItems:
+          type: array
+          description: The work items and their changes included in this batch.
+          items:
+            $ref: '#/components/schemas/WorkItem'
       required:
-        - values
-        - lastBatch
-    WorkItemChange:
-      description: |
-        Single change of a work item.
-        A work item may either be updated (WorkItemUpdate) or deleted (WorkItemDeletion).
-      oneOf:
-        - $ref: '#/components/schemas/WorkItemUpdate'
-        - $ref: '#/components/schemas/WorkItemDeletion'
-      discriminator:
-        propertyName: updateType
-        mapping:
-          UPDATE: '#/components/schemas/WorkItemUpdate'
-          DELETE: '#/components/schemas/WorkItemDeletion'
-    WorkItemChangeBase:
-      description: |
-        Base type for work item changes.
+        - allItemsIds
+        - workItems
+    WorkItem:
       type: object
+      description: |
+        Describes the state of a single work item at its latest revision up to the 'endRevision' number passed in the request, if present, otherwise at its latest revision (if endReivision is not present).
+      required:
+        - id
+        - updateType
+        - revision
       properties:
+        id:
+          example: EL-45
+          type: string
+        revision:
+          example: '1234'
+          type: string
         updateType:
           type: string
           enum:
             - UPDATE
             - DELETE
-        timestamp:
-          type: integer
-          description: |
-            Unix timestamp of the change
-        workItemId:
+        created:
           type: string
-          description: |
-            Polarion internal ID of the changed work item
-      required:
-        - updateType
-    WorkItemDeletion:
-      description: |
-        Marks the deletion of a single work item.
-        A deletion could have multiple sources:
-        1. The actual deletion of the work item from Polarion
-        2. The work item moved out of the described project/space/module
-        3. The work item was moved into the recycle bin of a document
-      allOf:
-        - $ref: '#/components/schemas/WorkItemChangeBase'
-        - type: object
-          # No other properties (yet)
-    WorkItemUpdate:
-      description: |
-        Describes an update of a work item.
-        An update can either be reported in full, i.e. the complete data of the work item are reported (WorkItemUpdateComplete),
-        or only as patch delta of one specific field (WorkItemUpdateDelta).
-        An update may only be reported as delta if at least one complete update (WorkItemUpdateComplete) for the same item is included earlier in the same batch.
-      allOf:
-        - $ref: '#/components/schemas/WorkItemChangeBase'
-        - oneOf:
-            - $ref: '#/components/schemas/WorkItemUpdateDelta'
-            - $ref: '#/components/schemas/WorkItemUpdateComplete'
-    WorkItemUpdateDelta:
-      description: |
-        Delta change to the latest reported version.
-        An update may only be reported as delta if at least one complete update (WorkItemUpdateComplete) for the same item is included earlier in the same batch.
-      type: object
-      required:
-        - delta
-      properties:
-        delta:
-          type: object
-          properties:
-            revision:
-              type: string
-              description: Revision of the work item after the update
-            changedFieldPath:
-              type: string
-              description: JSONPath pointing to the changed field within a WorkItem
-            valueBefore:
-              description: Value before the change
-            valueAfter:
-              description: Value after the change
-          required:
-            - changedField
-            - valueBefore
-            - valueAfter
-    WorkItemUpdateComplete:
-      description: |
-        Contains the complete work item after an update.
-      type: object
-      required:
-        - workItem
-      properties:
-        workItem:
-          $ref: '#/components/schemas/WorkItem'
-    WorkItem:
-      type: object
-      description: |
-        Describes the current state of a single work item
-      required:
-        - id
-        - revision
-        - attributes
-      properties:
-        id:
-          example: MyProjectId/MyWorkItemId
+          example: '1970-01-01T00:00:00Z'
+          format: date-time
+        description:
           type: string
-        revision:
-          example: '1234'
+          example: My text value
+        dueDate:
           type: string
-        attributes:
-          type: object
-          properties:
-            created:
-              type: string
-              example: '1970-01-01T00:00:00Z'
-              format: date-time
-            description:
-              type: object
-              properties:
-                type:
-                  enum:
-                    - text/html
-                    - text/plain
-                  type: string
-                value:
-                  example: My text value
-                  type: string
-            dueDate:
-              type: string
-              example: '1970-01-01'
-              format: date
-            hyperlinks:
-              type: array
-              items:
-                type: object
-                properties:
-                  role:
-                    example: ref_ext
-                    type: string
-                  uri:
-                    example: https://polarion.plm.automation.siemens.com
-                    type: string
-            id:
-              example: MyWorkItemId
-              type: string
-            initialEstimate:
-              example: 5 1/2d
-              type: string
-            outlineNumber:
-              example: '1.11'
-              type: string
-            plannedEnd:
-              example: '1970-01-01T00:00:00Z'
-              format: date-time
-              type: string
-            plannedStart:
-              example: '1970-01-01T00:00:00Z'
-              format: date-time
-              type: string
-            priority:
-              example: '90.0'
-              type: string
-            remainingEstimate:
-              example: 5 1/2d
-              type: string
-            resolution:
-              example: done
-              type: string
-            resolvedOn:
-              example: '1970-01-01T00:00:00Z'
-              format: date-time
-              type: string
-            severity:
-              example: blocker
-              type: string
-            status:
-              example: open
-              type: string
-            timeSpent:
-              example: 5 1/2d
-              type: string
-            title:
-              example: Title
-              type: string
-            type:
-              example: task
-              type: string
-            updated:
-              example: '1970-01-01T00:00:00Z'
-              format: date-time
-              type: string
-            custom:
-              type: object
-              description: Contains all custom fields
-              additionalProperties:
-                $ref: '#/components/schemas/CustomFieldValue'
-        relationships:
-          type: object
-          properties:
-            assignee:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyUserId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
-            attachments:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyProjectId/MyWorkItemId/MyAttachmentId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
-            author:
-              type: object
-              properties:
-                id:
-                  example: MyUserId
-                  type: string
-                revision:
-                  example: '1234'
-                  type: string
-            categories:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyProjectId/MyCategoryId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
-            comments:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyProjectId/MyWorkItemId/MyCommentId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
-            linkedWorkItems:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyProjectId/MyWorkItemId/parent/MyProjectId/MyLinkedWorkItemId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
-            module:
-              type: object
-              properties:
-                id:
-                  example: MyProjectId/MySpaceId/MyDocumentId
-                  type: string
-                revision:
-                  example: '1234'
-                  type: string
-            plannedIn:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyProjectId/MyPlanId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
-            project:
-              type: object
-              properties:
-                id:
-                  example: MyProjectId
-                  type: string
-                revision:
-                  example: '1234'
-                  type: string
-            watches:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    example: MyUserId
-                    type: string
-                  revision:
-                    example: '1234'
-                    type: string
+          example: '1970-01-01'
+          format: date
+        hyperlinks:
+          type: array
+          items:
+            type: string
+        initialEstimate:
+          example: '5 1/2d'
+          type: string
+        outlineNumber:
+          example: '1.11'
+          type: string
+        plannedEnd:
+          example: '1970-01-01T00:00:00Z'
+          format: date-time
+          type: string
+        plannedStart:
+          example: '1970-01-01T00:00:00Z'
+          format: date-time
+          type: string
+        plannedIn:
+          type: array
+          items:
+            type: string          
+        priority:
+          example: '90.0'
+          type: string
+        remainingEstimate:
+          example: '5 1/2d'
+          type: string
+        resolution:
+          example: 'done'
+          type: string
+        resolvedOn:
+          example: '1970-01-01T00:00:00Z'
+          format: date-time
+          type: string
+        severity:
+          example: 'blocker'
+          type: string
+        status:
+          example: 'open'
+          type: string
+        timeSpent:
+          example: '5 1/2d'
+          type: string
+        title:
+          example: 'a work item title'
+          type: string
+        type:
+          example: 'task'
+          type: string
+        updated:
+          example: '1970-01-01T00:00:00Z'
+          format: date-time
+          type: string
+        moduleId:
+          example: 'Requirements'
+          type: string 
+        moduleTitle:
+          example: 'Requirements'
+          type: string   
+        projectId:
+          example: 'e-library'
+          type: string 
+        assignees:
+          type: array
+          items:
+            type: string    
+        attachments:
+          type: array
+          items:
+            type: string  
+        author:
+          example: 'ted_lasso'
+          type: string
+        categories:
+          type: array
+          items:
+            type: string  
+        comments:
+          type: array
+          items:
+            type: string  
+        watchers:
+          type: array
+          items:
+            type: string             
+        customFields:
+          type: array
+          items: 
+            $ref: '#/components/schemas/CustomFieldValue'
+          description: Contains all custom fields            
+        linkedWorkItems:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                example: 'EL-109'
+                type: string
+              linkRoleId:
+                example: 'parent'
+                type: string
+              linkRoleName:
+                example: 'has parent'
+                type: string
+              linkDirection:
+                example: 'OUT'
+                type: string
+                enum:
+                  - IN
+                  - OUT
+        workItemChanges:
+          type: array
+          items: 
+            $ref: '#/components/schemas/WorkItemChange'
+          description: Collection of changes for the work item grouped by revision number
     CustomFieldValue:
-      description: Value of the custom field. Does not have an explicit type, as this depends on the custom field definition
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+      type: object
+      description: Value of the custom field. Does not have an explicit type, as this depends on the custom field definition    
+    WorkItemChange:
+      type: object
+      required:
+        - revision
+        - fieldChanges
+      properties:
+        revision:
+          type: string
+          example: '123'
+          description: Revision of which the work item was updated
+        fieldChanges:
+          type: array
+          items: 
+            oneOf:
+            - $ref: '#/components/schemas/FieldChange'
+            - $ref: '#/components/schemas/LinkFieldChange'
+        valueBefore:
+            description: Value before the change
+        valueAfter:
+            description: Value after the change
+    FieldChange:
+      type: object
+      description: Object that represents a field change (fieldDiff)
+      properties:
+        fieldName:
+          type: string
+          example: 'title'
+        oneOfTheFollowing:
+          oneOf:
+            - properties:
+                fieldValueBefore:
+                  type: string
+                  example: 'Borrow a Book'
+                fieldValueAfter:
+                  type: string
+                  example: 'Reserve a Book'
+            - properties:
+                elementsAdded:
+                  type: array
+                  items: 
+                    type: string
+            - properties:
+                elementsRemoved:
+                  type: array
+                  items: 
+                    type: string       
+    LinkFieldChange:
+      type: object
+      properties:
+        linkRoleId:
+          type: string
+          example: 'parent'
+        linkRoleName:
+          type: string
+          example: 'has parent'
+        linkRoleDirection:
+          type: string
+          enum:
+            - IN
+            - OUT
+        fieldName:
+          type: string
+          example: 'linkedWorkItems'        
+        oneOfTheFollowing:
+          oneOf:
+            - properties:
+                elementsAdded:
+                  type: array
+                  items: 
+                    type: string
+            - properties:
+                elementsRemoved:
+                  type: array
+                  items: 
+                    type: string  

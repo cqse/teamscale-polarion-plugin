@@ -1,0 +1,46 @@
+plugins {
+    id 'java' 
+}
+
+description = "Teamscale Polarion plugin for Polarion v22 R2"
+
+version = '0.0.1'
+
+
+sourceSets {
+    main.java.srcDirs = ['src']
+}
+
+/*
+ Dependencies for local buils only. Optionally, you can change that lib/ folder
+ and make the dependencies point to your polarion/plugins folder where are those
+ jars are taken. For instance /opt/polarion/polarion/plugins/<jar file>
+*/
+dependencies {  
+	compileOnly files(
+		'lib/util.jar', 
+		'lib/gson-2.8.9.patched.jar',
+		'lib/platform.jar',
+    	'lib/tracker.jar',
+   		'lib/platform-persistence.jar',
+   		'lib/projects.jar',
+    	'lib/platform-repository.jar',
+    	'lib/subterra-base-core.jar',
+    	'lib/subterra-base-data.jar',
+    	'lib/javax.servlet_4.0.0.jar'
+	) 
+}
+
+jar {
+    from('webapp/WEB-INF') {
+        into('webapp/WEB-INF')
+    }
+    from{
+        ["plugin.xml"]
+    }
+    manifest {
+        from 'META-INF/MANIFEST.MF'
+    }
+    exclude('com/teamscale/polarion/plugin/client')     
+    
+}

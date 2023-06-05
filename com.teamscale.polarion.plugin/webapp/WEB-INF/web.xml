@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE web-app
+      PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+      "http://java.sun.com/dtd/web-app_2_3.dtd">
+<web-app>
+	
+	<display-name>work-item-updates</display-name>
+	
+	<filter>
+		<filter-name>DoAsFilter</filter-name>
+		<filter-class>com.polarion.portal.tomcat.servlets.DoAsFilter</filter-class>
+	</filter>
+	<filter>
+		<filter-name>ActionsFilter</filter-name>
+		<filter-class>com.teamscale.polarion.plugin.ActionsFilter</filter-class>
+	</filter>
+	
+	<filter-mapping>
+		<filter-name>DoAsFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+	<filter-mapping>
+		<filter-name>ActionsFilter</filter-name>
+		<servlet-name>WorkItemUpdates</servlet-name>
+	</filter-mapping>
+
+	<servlet>
+		<servlet-name>WorkItemUpdates</servlet-name>
+		<display-name>Work Item Updates</display-name>
+		<description>Compute and return work item updates.</description>
+		<servlet-class>com.teamscale.polarion.plugin.WorkItemUpdatesServlet</servlet-class>
+		<load-on-startup>0</load-on-startup>
+	</servlet>	
+	
+	<servlet>
+		<servlet-name>IsAlive</servlet-name>
+		<display-name>Is Alive Check</display-name>
+		<description>Returns 200 Ok is if alive, otherwise 404</description>
+		<servlet-class>com.teamscale.polarion.plugin.IsAliveServlet</servlet-class>
+		<load-on-startup>0</load-on-startup>
+	</servlet>	
+	
+	<servlet-mapping>
+		<servlet-name>WorkItemUpdates</servlet-name>
+		<url-pattern>/</url-pattern>
+	</servlet-mapping>
+	
+	<servlet-mapping>
+		<servlet-name>IsAlive</servlet-name>
+		<url-pattern>/is-alive</url-pattern>
+	</servlet-mapping>
+
+	<security-constraint>
+		<web-resource-collection>
+			<web-resource-name>All</web-resource-name>
+			<url-pattern>/*</url-pattern>
+		</web-resource-collection>
+		<auth-constraint>
+			<role-name>user</role-name>
+		</auth-constraint>
+	</security-constraint>
+	<login-config>
+		<auth-method>FORM</auth-method>
+		<realm-name>PolarionRealm</realm-name>
+		<form-login-config>
+			<form-login-page>/login/login</form-login-page>
+			<form-error-page>/login/error</form-error-page>
+		</form-login-config>
+	</login-config>
+</web-app>
