@@ -277,6 +277,9 @@ public class WorkItemUpdatesCollector {
   /**
    * This is an overload of the helper {@see #collectFieldDiffAsCollection(String, WorkItemChange, IFieldDiff)
    * that applies to either added or removed items from fields that are treated as collections in Polarion
+   * Note: for custom fields, Polarion API behaves differently. The returned collection is not convertible to
+   * a list of IPObjects. The collection comes as untyped List (ArrayList) and typically the internal elements are
+   * of type EnumOption (as custom field types are typically defined as enumerations on Polarion admin settings).
    * */
   private List<WorkItemFieldDiff> collectFieldDiffAsCollection(
       Collection addedOrRemovedItems,
@@ -289,6 +292,8 @@ public class WorkItemUpdatesCollector {
     // We check if the collection is hyperlink list first since they're not
     // convertible into IPObjectList. So, we treat them separately.
     if (Utils.isCollectionHyperlinkStructList(addedOrRemovedItems)) {
+      // Polarion API does not offer fieldDiff.getId() that's why we get getFieldName()
+      // Upon some testing, getFieldName actually returns the field id.
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
         fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(addedOrRemovedItems));
@@ -324,6 +329,19 @@ public class WorkItemUpdatesCollector {
         fieldChange.setElementsAdded(Utils.castApprovalsToStrList(addedOrRemovedItems));
       } else {
         fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(addedOrRemovedItems));
+      }
+      fieldChanges.add(fieldChange);
+    } else if (Utils.isUntypedListWithEnumOptions(addedOrRemovedItems)) {
+      // This if block catches the case when changes are made on custom field values.
+      // For custom fields Polarion returns an untyped List (ArrayList) and typically the internal
+      // elements are of type EnumOption (as custom field types are typically defined as
+      // enumerations on Polarion admin settings).
+      WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
+      if (isAdded) {
+        fieldChange.setElementsAdded(Utils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
+      } else {
+        fieldChange.setElementsRemoved(
+            Utils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
     } else if (!Utils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {

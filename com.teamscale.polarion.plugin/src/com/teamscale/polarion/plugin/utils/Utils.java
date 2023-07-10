@@ -1,5 +1,6 @@
 package com.teamscale.polarion.plugin.utils;
 
+import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.projects.model.IUser;
 import com.polarion.alm.tracker.model.IApprovalStruct;
 import com.polarion.alm.tracker.model.IAttachment;
@@ -13,6 +14,7 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.types.duration.DurationTime;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
+import com.polarion.platform.persistence.model.ITypedList;
 import com.polarion.subterra.base.location.ILocation;
 import com.teamscale.polarion.plugin.model.LinkDirection;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
@@ -297,10 +299,12 @@ public class Utils {
   public static String castFieldValueToString(Object value) {
     if (value == null) {
       return "";
+    } else if (value instanceof IUniqueObject) {
+      return ((IUniqueObject) value).getId();
     } else if (value instanceof String) {
       return (String) value;
     } else if (value instanceof IEnumOption) {
-      return ((IEnumOption) value).getName(); // Or should it be getId()?
+      return ((IEnumOption) value).getId();
     } else if (value instanceof java.util.Date) {
       return ((java.util.Date) value).toInstant().toString();
     } else if (value instanceof DurationTime) {
@@ -320,14 +324,20 @@ public class Utils {
     } else if (value instanceof String) {
       return value;
     } else if (value instanceof IEnumOption) {
-      return ((IEnumOption) value).getName(); // Or should it be getId()?
+      return ((IEnumOption) value).getId();
     } else if (value instanceof java.util.Date) {
       return ((java.util.Date) value).toInstant().toString();
     } else if (value instanceof DurationTime) {
       return ((DurationTime) value).toString();
+    } else if (value instanceof ITypedList) {
+      return castCustomFieldTypedList((ITypedList) value);
     } else {
       return value.toString();
     }
+  }
+
+  private static Object castCustomFieldTypedList(ITypedList<?> list) {
+    return list.stream().map(elem -> castCustomFieldValue(elem)).collect(Collectors.toList());
   }
 
   /**
@@ -351,8 +361,39 @@ public class Utils {
                 return ((IComment) elem).getId();
               } else if (elem instanceof IWorkItem) {
                 return ((IWorkItem) elem).getId();
+              } else if (elem instanceof IEnumOption) {
+                return ((IEnumOption) elem).getId();
               } else if (elem != null) {
                 return elem.toString();
+              } else {
+                return "";
+              }
+            })
+        .collect(Collectors.toList());
+  }
+
+  /** Checks if the collection is a list of IEnumOptions and early returns false if it's empty */
+  public static boolean isUntypedListWithEnumOptions(Collection collection) {
+    if (!collection.isEmpty() && collection instanceof List) {
+      List<?> list = (List<?>) collection;
+      return list.get(0) instanceof IEnumOption;
+    }
+    return false;
+  }
+
+  /**
+   * Takes an untyped list returned by Polarion API and converts it to a list of strings (usually
+   * Ids). If the input is not a list of EnumOptions then returns empty strings as elements. Use
+   * case: for custom fields Polarion returns an untyped List (ArrayList) and typically the internal
+   * elements are of type EnumOption (as custom field types are typically defined as enumerations on
+   * Polarion admin settings).
+   */
+  public static List<String> castUntypedListToStrList(List<?> list) {
+    return list.stream()
+        .map(
+            elem -> {
+              if (elem instanceof IEnumOption) {
+                return ((IEnumOption) elem).getId();
               } else {
                 return "";
               }
