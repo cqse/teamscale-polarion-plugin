@@ -18,16 +18,16 @@ sourceSets {
 */
 dependencies {  
 	compileOnly files(
-		'lib/util.jar', 
-		'lib/gson-2.8.9.patched.jar',
-		'lib/platform.jar',
-    	'lib/tracker.jar',
-   		'lib/platform-persistence.jar',
-   		'lib/projects.jar',
-    	'lib/platform-repository.jar',
-    	'lib/subterra-base-core.jar',
-    	'lib/subterra-base-data.jar',
-    	'lib/javax.servlet_4.0.0.jar'
+		'/opt/polarion/polarion/plugins/com.polarion.core.util_3.22.2/util.jar', 
+		'/opt/polarion/polarion/plugins/gson-2.8.9.patched.jar',
+		'/opt/polarion/polarion/plugins/com.polarion.platform_3.22.2/platform.jar',
+    	'/opt/polarion/polarion/plugins/com.polarion.alm.tracker_3.22.2/tracker.jar',
+   		'/opt/polarion/polarion/plugins/com.polarion.platform.persistence_3.22.2/platform-persistence.jar',
+   		'/opt/polarion/polarion/plugins/com.polarion.alm.projects_3.22.2/projects.jar',
+    	'/opt/polarion/polarion/plugins/com.polarion.platform.repository_3.22.2/platform-repository.jar',
+    	'/opt/polarion/polarion/plugins/com.polarion.subterra.base_5.22.2/subterra-base-core.jar',
+    	'/opt/polarion/polarion/plugins/com.polarion.subterra.base_5.22.2/subterra-base-data.jar',
+    	'/opt/polarion/polarion/plugins/javax.servlet_4.0.0.jar'
 	) 
 }
 
