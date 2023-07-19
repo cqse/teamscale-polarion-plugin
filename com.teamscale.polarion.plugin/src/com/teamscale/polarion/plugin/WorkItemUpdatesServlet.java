@@ -16,6 +16,7 @@ import com.polarion.platform.service.repository.AccessDeniedException;
 import com.polarion.platform.service.repository.ResourceException;
 import com.polarion.subterra.base.data.model.TypeFactory;
 import com.teamscale.polarion.plugin.model.Response;
+import com.teamscale.polarion.plugin.model.ResponseType;
 import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.PluginLogger;
@@ -28,6 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -44,6 +47,20 @@ import javax.servlet.http.HttpServletResponse;
 public class WorkItemUpdatesServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
+
+  /**
+   * This is the Kth revision given a lastUpdate revision to look at. This is necessary due to
+   * performance reasons. In some documents with high revision activity, we cannot process the whole
+   * set of WIs at one request. Since Polarion API doesn't provide a way to request WI history by
+   * revision range Then our solution involves looking at WIs history in chunks of K revisions. The
+   * value of K_CONST is empirically derived.
+   */
+  private static final int K_CONST = 10;
+
+  /** This will keep a sorted set of revision numbers based on the WIs revisions in the doc */
+  private final SortedSet<Integer> revisionSortedSet = new TreeSet<Integer>();
+
+  private ResponseType responseType;
 
   private final PluginLogger logger = new PluginLogger();
 
@@ -165,7 +182,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     lastUpdate = Integer.parseInt(lastUpdateStr);
 
     if (endRevisionStr == null) {
-      // process all the way to HEAD
+      // process all the way to HEAD by default
       endRevision = Integer.MAX_VALUE;
     } else if (!validateRevisionNumberString(endRevisionStr)) {
       return false;
@@ -180,7 +197,19 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       throws ServletException, IOException {
     Gson gson = new Gson();
 
-    Response response = new Response(allValidItems, allItemsToSend.values());
+    String endRevisionStr;
+    if (endRevision == Integer.MAX_VALUE) {
+      endRevisionStr = "HEAD";
+    } else {
+      endRevisionStr = String.valueOf(endRevision);
+    }
+    Response response =
+        new Response(
+            allValidItems,
+            allItemsToSend.values(),
+            responseType,
+            String.valueOf(lastUpdate + 1),
+            endRevisionStr);
 
     String jsonResult = gson.toJson(response);
     resp.setContentType("application/json");
@@ -202,7 +231,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     sqlQuery.append(" and M.C_ID = '" + docId + "'");
     sqlQuery.append(" and M.C_MODULEFOLDER = '" + spaceId + "'");
     sqlQuery.append(generateWorkItemTypesAndClause());
-
+    // Note: We do not add a clause to select WIs after a given revision as we still
+    // want to return a list of all WIs for the client to do delete control logic.
     return sqlQuery.toString();
   }
 
@@ -261,9 +291,28 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 
     long timeAfter = System.currentTimeMillis();
-    logger.info("Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
+    logger.debug("Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
 
     timeBefore = System.currentTimeMillis();
+
+    buildRevisionSet(workItems, dataService);
+
+    Integer kRevisionNumber;
+
+    // We either process up to the Kth revision or endRevision
+    // And this will tell whether the response will partial or complete
+    Object[] revisionSortedArray = revisionSortedSet.toArray();
+    if (revisionSortedArray.length > K_CONST) {
+      kRevisionNumber = (Integer) revisionSortedArray[K_CONST];
+      if (kRevisionNumber < endRevision) {
+        endRevision = kRevisionNumber;
+        responseType = ResponseType.PARTIAL;
+      } else {
+        responseType = ResponseType.COMPLETE;
+      }
+    } else {
+      responseType = ResponseType.COMPLETE;
+    }
 
     WorkItemUpdatesCollector workItemUpdatesCollector =
         new WorkItemUpdatesCollector(
@@ -299,6 +348,26 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         "Finished processing request. " + "Execution time (ms): " + (timeAfter - timeBefore));
 
     return allValidsItemsLatest;
+  }
+
+  /**
+   * It'll build an ordered set of revision numbers based on the work items revisions and taking
+   * revisions after the base revision (lastUpdate).
+   */
+  private SortedSet<Integer> buildRevisionSet(
+      IPObjectList<IWorkItem> workItems, IDataService dataService) {
+
+    revisionSortedSet.clear();
+
+    for (IWorkItem workItem : workItems) {
+      IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
+      for (IWorkItem workItemVersion : workItemHistory) {
+        if (Integer.valueOf(workItemVersion.getRevision()) > lastUpdate) {
+          revisionSortedSet.add(Integer.valueOf(workItemVersion.getRevision()));
+        }
+      }
+    }
+    return revisionSortedSet;
   }
 
   /**

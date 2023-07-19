@@ -8,6 +8,16 @@ public class Response {
   /** All items present (not deleted) in the latest revision of the proj/folder/doc */
   private final Collection<String> allItemsIds;
 
+  private final ResponseType responseType;
+
+  /**
+   * Following two fields will tell in the response the revision numbers of the response scope.
+   * Client then should take them and build another request if it's a partial response.
+   */
+  private final String fromRevision;
+
+  private final String toRevision;
+
   /** All items that have changed in the proj/folder/doc given (lastUpdate, endRevision] */
   private final Collection<WorkItemForJson> workItems;
 
@@ -19,9 +29,17 @@ public class Response {
    * revision. Note that (B) can have more items than (A) if new items were created since lastUpdate
    * revision.
    */
-  public Response(Collection<String> allItemsIds, Collection<WorkItemForJson> workItems) {
+  public Response(
+      Collection<String> allItemsIds,
+      Collection<WorkItemForJson> workItems,
+      ResponseType responseType,
+      String fromRevision,
+      String toRevision) {
     this.allItemsIds = allItemsIds;
     this.workItems = workItems;
+    this.responseType = responseType;
+    this.fromRevision = fromRevision;
+    this.toRevision = toRevision;
   }
 
   public Collection<String> getAllItemsIds() {
@@ -30,5 +48,17 @@ public class Response {
 
   public Collection<WorkItemForJson> getWorkItems() {
     return workItems;
+  }
+
+  public ResponseType getResponseType() {
+    return responseType;
+  }
+
+  public String getFromRevision() {
+    return fromRevision;
+  }
+
+  public String getToRevision() {
+    return toRevision;
   }
 }
