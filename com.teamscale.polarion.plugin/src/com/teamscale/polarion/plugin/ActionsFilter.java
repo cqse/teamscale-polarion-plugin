@@ -27,9 +27,7 @@ public class ActionsFilter extends DoAsFilter implements Filter {
 
     if (req instanceof HttpServletRequest) {
       HttpServletRequest servletReq = (HttpServletRequest) req;
-      if (isRequestToIsAlive(servletReq.getServletPath())) {
-        chain.doFilter(req, res);
-      } else if (validatePath(servletReq.getServletPath())) {
+      if (validatePath(servletReq.getServletPath())) {
         setRequestPathParameters(servletReq);
         chain.doFilter(req, res);
       } else {
@@ -65,9 +63,5 @@ public class ActionsFilter extends DoAsFilter implements Filter {
    */
   private boolean validatePath(String path) {
     return (path.endsWith("work-item-updates") && path.split("/").length == 5);
-  }
-
-  private boolean isRequestToIsAlive(String path) {
-    return (path.endsWith("is-alive") && path.split("/").length == 2);
   }
 }

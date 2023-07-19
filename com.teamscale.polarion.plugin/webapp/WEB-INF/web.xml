@@ -35,7 +35,7 @@
 	<servlet>
 		<servlet-name>IsAlive</servlet-name>
 		<display-name>Is Alive Check</display-name>
-		<description>Returns 200 Ok is if alive, otherwise 404</description>
+		<description>Returns 200 Ok if alive, otherwise 404</description>
 		<servlet-class>com.teamscale.polarion.plugin.IsAliveServlet</servlet-class>
 		<load-on-startup>0</load-on-startup>
 	</servlet>	
