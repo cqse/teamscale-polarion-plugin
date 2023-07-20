@@ -20,6 +20,7 @@ import com.teamscale.polarion.plugin.model.ResponseType;
 import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.PluginLogger;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -29,8 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -47,18 +46,6 @@ import javax.servlet.http.HttpServletResponse;
 public class WorkItemUpdatesServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
-
-  /**
-   * This is the Kth revision given a lastUpdate revision to look at. This is necessary due to
-   * performance reasons. In some documents with high revision activity, we cannot process the whole
-   * set of WIs at one request. Since Polarion API doesn't provide a way to request WI history by
-   * revision range Then our solution involves looking at WIs history in chunks of K revisions. The
-   * value of K_CONST is empirically derived.
-   */
-  private static final int K_CONST = 10;
-
-  /** This will keep a sorted set of revision numbers based on the WIs revisions in the doc */
-  private final SortedSet<Integer> revisionSortedSet = new TreeSet<Integer>();
 
   private ResponseType responseType;
 
@@ -99,6 +86,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    */
   private Map<String, WorkItemForJson> allItemsToSend;
 
+  private static final int TIME_THRESHOLD = 1000; // milliseconds
+
   /**
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
    *     javax.servlet.http.HttpServletResponse)
@@ -106,6 +95,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   @Override
   protected void doGet(final HttpServletRequest req, final HttpServletResponse res)
       throws ServletException, IOException {
+
+    // We assume a complete response unless it's close to timeout then we turn it into partial.
+    responseType = ResponseType.COMPLETE;
 
     String projId = (String) req.getAttribute("project");
     String spaceId = (String) req.getAttribute("space");
@@ -119,6 +111,13 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
 
     includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
+
+    String[] clientKnownIds = readRequestBody(req, res);
+    if (clientKnownIds == null) {
+      logger.error("Error attempting to read request body.");
+      res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      return;
+    }
 
     if (!processRevisionNumbers(lastUpdateStr, endRevisionStr)) {
       String msg = "Invalid revision numbers. Review lastUpdate and" + " endRevision parameters.";
@@ -134,7 +133,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
         allItemsToSend = new HashMap<>();
 
-        Collection<String> allValidItemsLatest = retrieveChanges(projId, spaceId, docId);
+        Collection<String> allValidItemsLatest =
+            retrieveChanges(projId, spaceId, docId, clientKnownIds);
         sendResponse(res, allValidItemsLatest);
 
         logger.info("Successful response sent");
@@ -155,6 +155,30 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           resourceException);
       res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     }
+  }
+
+  private String[] readRequestBody(
+      final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+    String[] knownIds = null;
+    StringBuilder jsonBody = new StringBuilder();
+    String line;
+    try {
+      BufferedReader reader = request.getReader();
+      line = reader.readLine();
+      while (line != null) {
+        jsonBody.append(line);
+        line = reader.readLine();
+      }
+    } catch (IOException e) {
+      return knownIds;
+    }
+    if (jsonBody.length() == 0) {
+      return new String[] {};
+    }
+
+    Gson gson = new Gson();
+    knownIds = gson.fromJson(jsonBody.toString(), String[].class);
+    return knownIds;
   }
 
   /**
@@ -206,6 +230,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     Response response =
         new Response(
             allValidItems,
+            allItemsToSend.keySet(),
             allItemsToSend.values(),
             responseType,
             String.valueOf(lastUpdate + 1),
@@ -235,6 +260,25 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     // want to return a list of all WIs for the client to do delete control logic.
     return sqlQuery.toString();
   }
+
+  // TODO: Remove it or implement the idea
+  //  /** If the return string is blank all work items to be selected. */
+  //  private String generateWorkItemExclusionClause(String[] clientKnownIds) {
+  //    StringBuilder andClause = new StringBuilder("");
+  //    if (clientKnownIds != null && clientKnownIds.length > 0) {
+  //      andClause.append(" and WI.C_ID not in (");
+  //      for (int i = 0; i < clientKnownIds.length; i++) {
+  //        if (clientKnownIds[i] != null && !clientKnownIds[i].isBlank()) {
+  //          andClause.append("'" + clientKnownIds[i] + "',");
+  //        }
+  //      }
+  //      if (andClause.toString().endsWith(",")) {
+  //        andClause.deleteCharAt(andClause.length() - 1);
+  //      }
+  //      andClause.append(")");
+  //    }
+  //    return andClause.toString();
+  //  }
 
   /** If the return string is blank work items of all types will be included in the query. */
   private String generateWorkItemTypesAndClause() {
@@ -277,7 +321,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    * query. Additionally, it returns all work item Ids that are valid in the database at the moment
    * (after lastUpdate). That return will be used to pass this list of Ids to the response. *
    */
-  private Collection<String> retrieveChanges(String projId, String spaceId, String docId)
+  private Collection<String> retrieveChanges(
+      String projId, String spaceId, String docId, String[] clientKnownIds)
       throws ResourceException {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
@@ -295,33 +340,19 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     timeBefore = System.currentTimeMillis();
 
-    buildRevisionSet(workItems, dataService);
-
-    Integer kRevisionNumber;
-
-    // We either process up to the Kth revision or endRevision
-    // And this will tell whether the response will partial or complete
-    Object[] revisionSortedArray = revisionSortedSet.toArray();
-    if (revisionSortedArray.length > K_CONST) {
-      kRevisionNumber = (Integer) revisionSortedArray[K_CONST];
-      if (kRevisionNumber < endRevision) {
-        endRevision = kRevisionNumber;
-        responseType = ResponseType.PARTIAL;
-      } else {
-        responseType = ResponseType.COMPLETE;
-      }
-    } else {
-      responseType = ResponseType.COMPLETE;
-    }
-
     WorkItemUpdatesCollector workItemUpdatesCollector =
         new WorkItemUpdatesCollector(
             lastUpdate, endRevision, includeCustomFields, includeLinkRoles);
 
+    boolean closing = false;
+
     for (IWorkItem workItem : workItems) {
 
-      // Only check history if there were changes after lastUpdate
-      if (Integer.valueOf(workItem.getLastRevision()) > lastUpdate) {
+      // Only check history if workItem is not in client's known list and
+      // if there were changes after lastUpdate and if response is not closing
+      if (!closing
+          && !Arrays.stream(clientKnownIds).anyMatch(workItem.getId()::equals)
+          && Integer.valueOf(workItem.getLastRevision()) > lastUpdate) {
 
         WorkItemForJson workItemForJson;
 
@@ -335,6 +366,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         if (workItemForJson != null) {
           allItemsToSend.put(workItem.getId(), workItemForJson);
         }
+        timeAfter = System.currentTimeMillis();
+        if ((timeAfter - timeBefore) >= TIME_THRESHOLD) {
+          closing = true;
+          responseType = ResponseType.PARTIAL;
+        }
       }
       // Regardless, add item to the response so the client can do the diff to check for deletions
       allValidsItemsLatest.add(workItem.getId());
@@ -344,30 +380,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     workItemUpdatesCollector.createLinkChangesOppositeEntries(allItemsToSend);
 
     timeAfter = System.currentTimeMillis();
-    logger.info(
+    logger.debug(
         "Finished processing request. " + "Execution time (ms): " + (timeAfter - timeBefore));
 
     return allValidsItemsLatest;
-  }
-
-  /**
-   * It'll build an ordered set of revision numbers based on the work items revisions and taking
-   * revisions after the base revision (lastUpdate).
-   */
-  private SortedSet<Integer> buildRevisionSet(
-      IPObjectList<IWorkItem> workItems, IDataService dataService) {
-
-    revisionSortedSet.clear();
-
-    for (IWorkItem workItem : workItems) {
-      IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
-      for (IWorkItem workItemVersion : workItemHistory) {
-        if (Integer.valueOf(workItemVersion.getRevision()) > lastUpdate) {
-          revisionSortedSet.add(Integer.valueOf(workItemVersion.getRevision()));
-        }
-      }
-    }
-    return revisionSortedSet;
   }
 
   /**
