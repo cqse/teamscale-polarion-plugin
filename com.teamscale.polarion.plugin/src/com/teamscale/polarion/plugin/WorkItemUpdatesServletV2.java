@@ -43,7 +43,7 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author Bruno da Silva
  */
-public class WorkItemUpdatesServlet extends HttpServlet {
+public class WorkItemUpdatesServletV2 extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
@@ -247,7 +247,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   /**
    * To avoid SQL injection issues or any unexpected behavior, check if the variable pieces injected
    * in this query are valid. See what we do in the following method: {@link
-   * WorkItemUpdatesServlet#validateParameters(String, String, String)}
+   * WorkItemUpdatesServletV2#validateParameters(String, String, String)}
    */
   private String buildSqlQuery(String projId, String spaceId, String docId) {
 
