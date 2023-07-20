@@ -86,6 +86,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    */
   private Map<String, WorkItemForJson> allItemsToSend;
 
+  /** Time limit to stop analyzing new items - triggers a partial response */
   private static final int TIME_THRESHOLD = 1000; // milliseconds
 
   /**
@@ -206,8 +207,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     lastUpdate = Integer.parseInt(lastUpdateStr);
 
     if (endRevisionStr == null) {
-      // process all the way to HEAD by default
-      endRevision = Integer.MAX_VALUE;
+      // process all the way to the latest by default
+      endRevision =
+          Integer.valueOf(trackerService.getDataService().getLastStorageRevision().getName());
     } else if (!validateRevisionNumberString(endRevisionStr)) {
       return false;
     } else {
