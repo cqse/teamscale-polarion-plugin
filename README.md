@@ -31,6 +31,12 @@ Once the project is successfuly configured and building, follow instructions on 
 
 With that, you can run the local Polarion instance with the plugin deployed, and use it for debugging and development purposes.
 
+## Plugin Jar Generation
+
+We've built the jar with Gradle. Check the ```build.gradle``` file and edit it if needed.
+
+Run ```./gradlew build``` and the jar should be generated in the ```build/libs``` subfolder.
+
 ## What the Plugin does **NOT** do
 
 The Teamscale Polarion Plugin does not:
