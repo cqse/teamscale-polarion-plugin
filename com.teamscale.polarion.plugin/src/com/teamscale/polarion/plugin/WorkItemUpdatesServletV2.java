@@ -87,7 +87,9 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
   private Map<String, WorkItemForJson> allItemsToSend;
 
   /** Time limit to stop analyzing new items - triggers a partial response */
-  private static final int TIME_THRESHOLD = 1000; // milliseconds
+  private static final int TIME_THRESHOLD =
+      Integer.getInteger("com.teamscale.polarion.plugin.request-time-threshold", 30)
+          * 1000; // milliseconds
 
   /**
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
@@ -122,7 +124,7 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
 
     if (!processRevisionNumbers(lastUpdateStr, endRevisionStr)) {
       String msg = "Invalid revision numbers. Review lastUpdate and" + " endRevision parameters.";
-      logger.info(msg);
+      logger.error(msg);
       res.sendError(HttpServletResponse.SC_BAD_REQUEST, msg);
       return;
     }
@@ -140,7 +142,7 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
 
         logger.info("Successful response sent");
       } else {
-        logger.info("Invalid conbination of projectId/folderId/documentId");
+        logger.error("Invalid conbination of projectId/folderId/documentId");
         res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
       }
     } catch (PermissionDeniedException permissionDenied) {
@@ -221,6 +223,9 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
 
   private void sendResponse(HttpServletResponse resp, Collection<String> allValidItems)
       throws ServletException, IOException {
+
+    long timeBefore = System.currentTimeMillis();
+
     Gson gson = new Gson();
 
     String endRevisionStr;
@@ -242,6 +247,10 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
     resp.setContentType("application/json");
     PrintWriter out = resp.getWriter();
     out.print(jsonResult);
+
+    long timeAfter = System.currentTimeMillis();
+    logger.debug(
+        " Json serialization and response sent. Execution time (ms): " + (timeAfter - timeBefore));
   }
 
   /**
@@ -262,25 +271,6 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
     // want to return a list of all WIs for the client to do delete control logic.
     return sqlQuery.toString();
   }
-
-  // TODO: Remove it or implement the idea
-  //  /** If the return string is blank all work items to be selected. */
-  //  private String generateWorkItemExclusionClause(String[] clientKnownIds) {
-  //    StringBuilder andClause = new StringBuilder("");
-  //    if (clientKnownIds != null && clientKnownIds.length > 0) {
-  //      andClause.append(" and WI.C_ID not in (");
-  //      for (int i = 0; i < clientKnownIds.length; i++) {
-  //        if (clientKnownIds[i] != null && !clientKnownIds[i].isBlank()) {
-  //          andClause.append("'" + clientKnownIds[i] + "',");
-  //        }
-  //      }
-  //      if (andClause.toString().endsWith(",")) {
-  //        andClause.deleteCharAt(andClause.length() - 1);
-  //      }
-  //      andClause.append(")");
-  //    }
-  //    return andClause.toString();
-  //  }
 
   /** If the return string is blank work items of all types will be included in the query. */
   private String generateWorkItemTypesAndClause() {
@@ -338,9 +328,7 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 
     long timeAfter = System.currentTimeMillis();
-    logger.debug("Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
-
-    timeBefore = System.currentTimeMillis();
+    logger.debug("Finished sql query. Execution time (ms): " + (timeAfter - timeBefore));
 
     WorkItemUpdatesCollector workItemUpdatesCollector =
         new WorkItemUpdatesCollector(
@@ -348,7 +336,16 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
 
     boolean closing = false;
 
-    for (IWorkItem workItem : workItems) {
+    // for (IWorkItem workItem : workItems) {
+    for (int i = 0; i < workItems.size(); i++) {
+
+      IWorkItem workItem = workItems.get(i);
+
+      timeAfter = System.currentTimeMillis();
+      if ((timeAfter - timeBefore) >= TIME_THRESHOLD) {
+        closing = true;
+        responseType = ResponseType.PARTIAL;
+      }
 
       // Only check history if workItem is not in client's known list and
       // if there were changes after lastUpdate and if response is not closing
@@ -368,22 +365,21 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
         if (workItemForJson != null) {
           allItemsToSend.put(workItem.getId(), workItemForJson);
         }
-        timeAfter = System.currentTimeMillis();
-        if ((timeAfter - timeBefore) >= TIME_THRESHOLD) {
-          closing = true;
-          responseType = ResponseType.PARTIAL;
-        }
       }
       // Regardless, add item to the response so the client can do the diff to check for deletions
       allValidsItemsLatest.add(workItem.getId());
     }
 
+    timeAfter = System.currentTimeMillis();
+    logger.debug("Ended history processing. Execution time (ms): " + (timeAfter - timeBefore));
+
+    timeBefore = System.currentTimeMillis();
+
     workItemUpdatesCollector.createOppositeLinkEntries(allItemsToSend);
     workItemUpdatesCollector.createLinkChangesOppositeEntries(allItemsToSend);
 
     timeAfter = System.currentTimeMillis();
-    logger.debug(
-        "Finished processing request. " + "Execution time (ms): " + (timeAfter - timeBefore));
+    logger.debug("Opposite links post-processing execution time (ms): " + (timeAfter - timeBefore));
 
     return allValidsItemsLatest;
   }
@@ -437,7 +433,7 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
     try {
       IProject projObj = trackerService.getProjectsService().getProject(projectId);
 
-      logger.info("Attempting to read projectID: " + projObj.getId());
+      logger.debug("Attempting to read projectID: " + projObj.getId());
 
       return true;
 
@@ -449,10 +445,10 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
 
   private boolean validateSpaceId(String projId, String spaceId) {
     if (trackerService.getFolderManager().existFolder(projId, spaceId)) {
-      logger.info("Attempting to read folder: " + spaceId);
+      logger.debug("Attempting to read folder: " + spaceId);
       return true;
     }
-    logger.info("Not possible to find folder with id: " + spaceId);
+    logger.error("Not possible to find folder with id: " + spaceId);
     return false;
   }
 
@@ -475,11 +471,11 @@ public class WorkItemUpdatesServletV2 extends HttpServlet {
     for (IModule module : modules) {
       if (module.getId().equals(docId)) {
         this.module = module;
-        logger.info("Attempting to read document: " + docId);
+        logger.debug("Attempting to read document: " + docId);
         return true;
       }
     }
-    logger.info("Not possible to find document with id: " + docId);
+    logger.error("Not possible to find document with id: " + docId);
     return false;
   }
 
