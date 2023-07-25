@@ -130,21 +130,19 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
 
     try {
-      // To prevent SQL injection issues
-      // Check if the request params are valid IDs before putting them into the SQL query
-      if (validateParameters(projId, spaceId, docId)) {
-
         allItemsToSend = new HashMap<>();
 
         Collection<String> allValidItemsLatest =
             retrieveChanges(projId, spaceId, docId, clientKnownIds);
-        sendResponse(res, allValidItemsLatest);
+        
+        if (allValidItemsLatest == null) {
+        		logger.info("Successful response sent");
+        		logger.error("Invalid combination of projectId/folderId/documentId");
+        		res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found"); 		
+        } else {
+        		sendResponse(res, allValidItemsLatest);
+        }
 
-        logger.info("Successful response sent");
-      } else {
-        logger.error("Invalid conbination of projectId/folderId/documentId");
-        res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
-      }
     } catch (PermissionDeniedException permissionDenied) {
       logger.error("Permission denied raised by Polarion", permissionDenied);
       res.sendError(HttpServletResponse.SC_FORBIDDEN);
@@ -255,11 +253,15 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   /**
-   * To avoid SQL injection issues or any unexpected behavior, check if the variable pieces injected
-   * in this query are valid. See what we do in the following method: {@link
+   * To avoid SQL injection issues or any unexpected behavior, we check if the variable pieces passed
+   * to this query are valid. See what we do in the following method: {@link
    * WorkItemUpdatesServlet#validateParameters(String, String, String)}
    */
   private String buildSqlQuery(String projId, String spaceId, String docId) {
+  		
+  	if (!validateParameters(projId, spaceId, docId)) {
+  			return null;
+  	}	
 
     StringBuilder sqlQuery = new StringBuilder("select * from WORKITEM WI ");
     sqlQuery.append("inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI ");
@@ -319,6 +321,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       throws ResourceException {
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
+    
+    if (sqlQuery == null || sqlQuery.isEmpty()) {
+    		return null;
+    }
 
     IDataService dataService = trackerService.getDataService();
 
