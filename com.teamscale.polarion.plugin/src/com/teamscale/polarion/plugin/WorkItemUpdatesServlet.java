@@ -130,19 +130,18 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
 
     try {
-      allItemsToSend = new HashMap<>();
+        allItemsToSend = new HashMap<>();
 
-      Collection<String> allValidItemsLatest =
-          retrieveChanges(projId, spaceId, docId, clientKnownIds);
-
-      if (allValidItemsLatest == null) {
-        logger.info("Successful response sent");
-        logger.error("Invalid combination of projectId/folderId/documentId");
-        res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
-      } else {
-        sendResponse(res, allValidItemsLatest);
-      }
-
+        Collection<String> allValidItemsLatest =
+            retrieveChanges(projId, spaceId, docId, clientKnownIds);
+        
+        if (allValidItemsLatest == null) {
+        		logger.error("Invalid combination of projectId/folderId/documentId");
+        		res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found"); 		
+        } else {
+        		sendResponse(res, allValidItemsLatest);
+        		logger.info("Successful response sent");
+        }
     } catch (PermissionDeniedException permissionDenied) {
       logger.error("Permission denied raised by Polarion", permissionDenied);
       res.sendError(HttpServletResponse.SC_FORBIDDEN);
