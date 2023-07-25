@@ -11,6 +11,10 @@ sourceSets {
     main.java.srcDirs = ['src']
 }
 
+repositories {
+    mavenCentral()
+}
+
 /*
  Dependencies for local buils only. Optionally, you can change that lib/ folder
  and make the dependencies point to your polarion/plugins folder where are those
@@ -43,4 +47,8 @@ jar {
     }
     exclude('com/teamscale/polarion/plugin/client')     
     
+}
+
+task showMeCache doLast() {
+    configurations.compileClasspath.each { println it }
 }

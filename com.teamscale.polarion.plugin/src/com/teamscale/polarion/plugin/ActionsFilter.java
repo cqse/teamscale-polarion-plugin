@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletResponse;
  * required request attributes (project, space, module) as separate string objects for the servlet
  * to use.
  */
-public class ActionsFilterV2 extends DoAsFilter implements Filter {
+public class ActionsFilter extends DoAsFilter implements Filter {
 
   private final PluginLogger logger = new PluginLogger();
 
@@ -62,6 +62,6 @@ public class ActionsFilterV2 extends DoAsFilter implements Filter {
    * slash
    */
   private boolean validatePath(String path) {
-    return (path.endsWith("work-item-updates-v2") && path.split("/").length == 5);
+    return (path.endsWith("work-item-updates") && path.split("/").length == 5);
   }
 }

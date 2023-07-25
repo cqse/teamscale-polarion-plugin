@@ -4,15 +4,15 @@
       "http://java.sun.com/dtd/web-app_2_3.dtd">
 <web-app>
 	
-	<display-name>work-item-updates-v2</display-name>
+	<display-name>work-item-updates</display-name>
 	
 	<filter>
 		<filter-name>DoAsFilter</filter-name>
 		<filter-class>com.polarion.portal.tomcat.servlets.DoAsFilter</filter-class>
 	</filter>
 	<filter>
-		<filter-name>ActionsFilterV2</filter-name>
-		<filter-class>com.teamscale.polarion.plugin.ActionsFilterV2</filter-class>
+		<filter-name>ActionsFilter</filter-name>
+		<filter-class>com.teamscale.polarion.plugin.ActionsFilter</filter-class>
 	</filter>
 	
 	<filter-mapping>
@@ -20,34 +20,34 @@
 		<url-pattern>/*</url-pattern>
 	</filter-mapping>
 	<filter-mapping>
-		<filter-name>ActionsFilterV2</filter-name>
-		<servlet-name>WorkItemUpdatesV2</servlet-name>
+		<filter-name>ActionsFilter</filter-name>
+		<servlet-name>WorkItemUpdates</servlet-name>
 	</filter-mapping>
 
 	<servlet>
-		<servlet-name>WorkItemUpdatesV2</servlet-name>
-		<display-name>Work Item Updates V2</display-name>
+		<servlet-name>WorkItemUpdates</servlet-name>
+		<display-name>Work Item Updates</display-name>
 		<description>Compute and return work item updates.</description>
-		<servlet-class>com.teamscale.polarion.plugin.WorkItemUpdatesServletV2</servlet-class>
+		<servlet-class>com.teamscale.polarion.plugin.WorkItemUpdatesServlet</servlet-class>
 		<load-on-startup>0</load-on-startup>
 	</servlet>	
 	
 	<servlet>
-		<servlet-name>IsAliveV2</servlet-name>
+		<servlet-name>IsAlive</servlet-name>
 		<display-name>Is Alive Check</display-name>
 		<description>Returns 200 Ok if alive, otherwise 404</description>
-		<servlet-class>com.teamscale.polarion.plugin.IsAliveServletV2</servlet-class>
+		<servlet-class>com.teamscale.polarion.plugin.IsAliveServlet</servlet-class>
 		<load-on-startup>0</load-on-startup>
 	</servlet>	
 	
 	<servlet-mapping>
-		<servlet-name>WorkItemUpdatesV2</servlet-name>
+		<servlet-name>WorkItemUpdates</servlet-name>
 		<url-pattern>/</url-pattern>
 	</servlet-mapping>
 	
 	<servlet-mapping>
-		<servlet-name>IsAliveV2</servlet-name>
-		<url-pattern>/is-alive-v2</url-pattern>
+		<servlet-name>IsAlive</servlet-name>
+		<url-pattern>/is-alive</url-pattern>
 	</servlet-mapping>
 
 	<security-constraint>

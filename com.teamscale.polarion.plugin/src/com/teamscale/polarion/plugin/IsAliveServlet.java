@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author Bruno da Silva
  */
-public class IsAliveServletV2 extends HttpServlet {
+public class IsAliveServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
