@@ -160,7 +160,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
   }
 
-  /** Returns null if an error occur, otherwise returns a populated or empty string array  */
+  /** Returns null if an error occur, otherwise returns a populated or empty string array */
   private String[] readRequestBody(
       final HttpServletRequest request, final HttpServletResponse response) throws IOException {
     String[] knownIds = null;
