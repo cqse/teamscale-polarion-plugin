@@ -324,7 +324,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     IDataService dataService = trackerService.getDataService();
 
-    Collection<String> allValidsItemsLatest = new ArrayList<>();
+    final List<String> allValidItemIdsLatest = new ArrayList<>();
 
     long timeBefore = System.currentTimeMillis();
 
@@ -367,7 +367,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         }
       }
       // Regardless, add item to the response so the client can do the diff to check for deletions
-      allValidsItemsLatest.add(workItem.getId());
+      allValidItemIdsLatest.add(workItem.getId());
     }
 
     timeAfter = System.currentTimeMillis();
@@ -381,7 +381,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     timeAfter = System.currentTimeMillis();
     logger.debug("Opposite links post-processing execution time (ms): " + (timeAfter - timeBefore));
 
-    return allValidsItemsLatest;
+    return allValidItemIdsLatest;
   }
 
   /**
