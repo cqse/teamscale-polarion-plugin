@@ -99,28 +99,18 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   protected void doGet(final HttpServletRequest req, final HttpServletResponse res)
       throws ServletException, IOException {
 
-    // We assume a complete response unless it's close to timeout then we turn it into partial.
-    responseType = ResponseType.COMPLETE;
-
-    String projId = (String) req.getAttribute("project");
-    String spaceId = (String) req.getAttribute("space");
-    String docId = (String) req.getAttribute("document");
-
-    String lastUpdateStr = req.getParameter("lastUpdate");
-    String endRevisionStr = req.getParameter("endRevision");
-
-    workItemTypes = req.getParameterValues("includedWorkItemTypes");
-
-    includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
-
-    includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
-
-    String[] clientKnownIds = readRequestBody(req, res);
+    String[] clientKnownIds = readRequestBody(req);
     if (clientKnownIds == null) {
       logger.error("Error attempting to read request body.");
       res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       return;
     }
+
+    // We assume a complete response unless it's close to timeout then we turn it into partial.
+    responseType = ResponseType.COMPLETE;
+
+    String lastUpdateStr = req.getParameter("lastUpdate");
+    String endRevisionStr = req.getParameter("endRevision");
 
     if (!processRevisionNumbers(lastUpdateStr, endRevisionStr)) {
       String msg = "Invalid revision numbers. Review lastUpdate and" + " endRevision parameters.";
@@ -128,6 +118,14 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       res.sendError(HttpServletResponse.SC_BAD_REQUEST, msg);
       return;
     }
+
+    workItemTypes = req.getParameterValues("includedWorkItemTypes");
+    includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
+    includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
+
+    String projId = (String) req.getAttribute("project");
+    String spaceId = (String) req.getAttribute("space");
+    String docId = (String) req.getAttribute("document");
 
     try {
       allItemsToSend = new HashMap<>();
@@ -158,8 +156,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   /** Returns null if an error occur, otherwise returns a populated or empty string array */
-  private String[] readRequestBody(
-      final HttpServletRequest request, final HttpServletResponse response) throws IOException {
+  private String[] readRequestBody(final HttpServletRequest request) throws IOException {
     String[] knownIds = null;
     StringBuilder jsonBody = new StringBuilder();
     String line;
@@ -342,10 +339,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     boolean closing = false;
 
-    // for (IWorkItem workItem : workItems) {
-    for (int i = 0; i < workItems.size(); i++) {
-
-      IWorkItem workItem = workItems.get(i);
+    for (IWorkItem workItem : workItems) {
 
       timeAfter = System.currentTimeMillis();
       if ((timeAfter - timeBefore) >= TIME_THRESHOLD) {
@@ -356,7 +350,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       // Only check history if workItem is not in client's known list and
       // if there were changes after lastUpdate and if response is not closing
       if (!closing
-          && !Arrays.stream(clientKnownIds).anyMatch(workItem.getId()::equals)
+          && Arrays.stream(clientKnownIds).noneMatch(workItem.getId()::equals)
           && Integer.valueOf(workItem.getLastRevision()) > lastUpdate) {
 
         WorkItemForJson workItemForJson;
