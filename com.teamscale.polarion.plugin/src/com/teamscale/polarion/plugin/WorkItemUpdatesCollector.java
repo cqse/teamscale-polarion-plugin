@@ -12,7 +12,6 @@ import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.CastUtils;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -303,5 +302,4 @@ public class WorkItemUpdatesCollector {
   public void createLinkChangesOppositeEntries(final Map<String, WorkItemForJson> allItemsToSend) {
     fieldUpdatesCollector.createLinkChangesOppositeEntries(allItemsToSend);
   }
-
 }
