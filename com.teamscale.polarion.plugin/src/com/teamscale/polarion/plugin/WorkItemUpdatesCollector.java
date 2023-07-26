@@ -16,7 +16,8 @@ import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemFieldDiff;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
-import com.teamscale.polarion.plugin.utils.Utils;
+import com.teamscale.polarion.plugin.utils.CastUtils;
+import com.teamscale.polarion.plugin.utils.CollectionsAndEnumsUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -88,7 +89,7 @@ public class WorkItemUpdatesCollector {
         // We then return only if the item was created within the revision boundaries of the request
         if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
           workItemForJson =
-              Utils.castWorkItem(
+              CastUtils.castWorkItem(
                   workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap);
         }
       } else if (workItemHistory.size() > 1) {
@@ -113,7 +114,7 @@ public class WorkItemUpdatesCollector {
         // latest version of the item)
         if (endIndex >= 0) {
           workItemForJson =
-              Utils.castWorkItem(
+              CastUtils.castWorkItem(
                   workItemHistory.get(endIndex),
                   includeCustomFields,
                   includeLinkRoles,
@@ -242,8 +243,8 @@ public class WorkItemUpdatesCollector {
         WorkItemFieldDiff fieldChange =
             new WorkItemFieldDiff(
                 fieldDiff.getFieldName(),
-                Utils.castFieldValueToString(fieldDiff.getBefore()),
-                Utils.castFieldValueToString(fieldDiff.getAfter()));
+                CastUtils.castFieldValueToString(fieldDiff.getBefore()),
+                CastUtils.castFieldValueToString(fieldDiff.getAfter()));
         fieldChanges.add(fieldChange);
       }
     }
@@ -291,22 +292,22 @@ public class WorkItemUpdatesCollector {
     List<WorkItemFieldDiff> fieldChanges = new ArrayList<>();
     // We check if the collection is hyperlink list first since they're not
     // convertible into IPObjectList. So, we treat them separately.
-    if (Utils.isCollectionHyperlinkStructList(addedOrRemovedItems)) {
+    if (CollectionsAndEnumsUtils.isCollectionHyperlinkStructList(addedOrRemovedItems)) {
       // Polarion API does not offer fieldDiff.getId() that's why we get getFieldName()
       // Upon some testing, getFieldName actually returns the field id.
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
-        fieldChange.setElementsAdded(Utils.castHyperlinksToStrList(addedOrRemovedItems));
+        fieldChange.setElementsAdded(CollectionsAndEnumsUtils.castHyperlinksToStrList(addedOrRemovedItems));
       } else {
-        fieldChange.setElementsRemoved(Utils.castHyperlinksToStrList(addedOrRemovedItems));
+        fieldChange.setElementsRemoved(CollectionsAndEnumsUtils.castHyperlinksToStrList(addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
       // Then we check if they're ILiknedWorkItemStruct, because, again,
       // Polarion treats those 'struct' objects differently thank regular
       // IPObjects
     } else if (includeLinkRoles != null
-        && Utils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
-      if (fieldDiff.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)) {
+        && CollectionsAndEnumsUtils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
+      if (fieldDiff.getFieldName().equals(CastUtils.LINKED_WORK_ITEMS_FIELD_NAME)) {
         Collection<ILinkedWorkItemStruct> links =
             (Collection<ILinkedWorkItemStruct>) addedOrRemovedItems;
         links.forEach(
@@ -322,37 +323,37 @@ public class WorkItemUpdatesCollector {
                   isAdded);
             });
       }
-    } else if (Utils.isCollectionApprovalStructList(addedOrRemovedItems)) {
+    } else if (CollectionsAndEnumsUtils.isCollectionApprovalStructList(addedOrRemovedItems)) {
       // If the collection is a list of ApprovalStruct, we also treat them specifically
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
-        fieldChange.setElementsAdded(Utils.castApprovalsToStrList(addedOrRemovedItems));
+        fieldChange.setElementsAdded(CollectionsAndEnumsUtils.castApprovalsToStrList(addedOrRemovedItems));
       } else {
-        fieldChange.setElementsRemoved(Utils.castApprovalsToStrList(addedOrRemovedItems));
+        fieldChange.setElementsRemoved(CollectionsAndEnumsUtils.castApprovalsToStrList(addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
-    } else if (Utils.isUntypedListWithEnumOptions(addedOrRemovedItems)) {
+    } else if (CastUtils.isUntypedListWithEnumOptions(addedOrRemovedItems)) {
       // This if block catches the case when changes are made on custom field values.
       // For custom fields Polarion returns an untyped List (ArrayList) and typically the internal
       // elements are of type EnumOption (as custom field types are typically defined as
       // enumerations on Polarion admin settings).
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
-        fieldChange.setElementsAdded(Utils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
+        fieldChange.setElementsAdded(CastUtils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
       } else {
         fieldChange.setElementsRemoved(
-            Utils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
+            CastUtils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
-    } else if (!Utils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
+    } else if (!CollectionsAndEnumsUtils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       try {
         if (isAdded) {
           fieldChange.setElementsAdded(
-              Utils.castCollectionToStrList((List<IPObject>) addedOrRemovedItems));
+              CastUtils.castCollectionToStrList((List<IPObject>) addedOrRemovedItems));
         } else {
           fieldChange.setElementsRemoved(
-              Utils.castCollectionToStrList((List<IPObject>) addedOrRemovedItems));
+              CastUtils.castCollectionToStrList((List<IPObject>) addedOrRemovedItems));
         }
       } catch (ClassCastException ex) {
         // For now, when an added/removed element/value is not among the ones we're supposed
@@ -571,7 +572,7 @@ public class WorkItemUpdatesCollector {
                   if (fieldChangeEntry == null) {
                     fieldChangeEntry =
                         new LinkFieldDiff(
-                            Utils.LINKED_WORK_ITEMS_FIELD_NAME,
+                            CastUtils.LINKED_WORK_ITEMS_FIELD_NAME,
                             linkBundle.getLinkedWorkItem().getLinkRoleId(),
                             linkBundle.getLinkedWorkItem().getLinkRoleName(),
                             linkBundle.getLinkedWorkItem().getLinkDirection());
@@ -608,7 +609,7 @@ public class WorkItemUpdatesCollector {
       final WorkItemChange workItemChange, LinkBundle linkBundle) {
 
     for (WorkItemFieldDiff fieldChangeEntry : workItemChange.getFieldChanges()) {
-      if (fieldChangeEntry.getFieldName().equals(Utils.LINKED_WORK_ITEMS_FIELD_NAME)
+      if (fieldChangeEntry.getFieldName().equals(CastUtils.LINKED_WORK_ITEMS_FIELD_NAME)
           && fieldChangeEntry instanceof LinkFieldDiff
           && ((LinkFieldDiff) fieldChangeEntry)
               .getLinkRoleId()
