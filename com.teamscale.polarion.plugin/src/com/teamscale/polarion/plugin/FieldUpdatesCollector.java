@@ -247,7 +247,7 @@ public class FieldUpdatesCollector {
    *     link
    * @param isAdded is true if this a list of added links, otherwise these are removed links *
    */
-  private void updateOppositeLinksMap(
+  public void updateOppositeLinksMap(
       String workItemId, String revision, ILinkedWorkItemStruct link, boolean isAdded) {
 
     // For each link struct, get the WI id, check if there's an entry in the map
