@@ -297,9 +297,11 @@ public class WorkItemUpdatesCollector {
       // Upon some testing, getFieldName actually returns the field id.
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
-        fieldChange.setElementsAdded(CollectionsAndEnumsUtils.castHyperlinksToStrList(addedOrRemovedItems));
+        fieldChange.setElementsAdded(
+            CollectionsAndEnumsUtils.castHyperlinksToStrList(addedOrRemovedItems));
       } else {
-        fieldChange.setElementsRemoved(CollectionsAndEnumsUtils.castHyperlinksToStrList(addedOrRemovedItems));
+        fieldChange.setElementsRemoved(
+            CollectionsAndEnumsUtils.castHyperlinksToStrList(addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
       // Then we check if they're ILiknedWorkItemStruct, because, again,
@@ -327,9 +329,11 @@ public class WorkItemUpdatesCollector {
       // If the collection is a list of ApprovalStruct, we also treat them specifically
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
-        fieldChange.setElementsAdded(CollectionsAndEnumsUtils.castApprovalsToStrList(addedOrRemovedItems));
+        fieldChange.setElementsAdded(
+            CollectionsAndEnumsUtils.castApprovalsToStrList(addedOrRemovedItems));
       } else {
-        fieldChange.setElementsRemoved(CollectionsAndEnumsUtils.castApprovalsToStrList(addedOrRemovedItems));
+        fieldChange.setElementsRemoved(
+            CollectionsAndEnumsUtils.castApprovalsToStrList(addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
     } else if (CastUtils.isUntypedListWithEnumOptions(addedOrRemovedItems)) {
@@ -339,13 +343,15 @@ public class WorkItemUpdatesCollector {
       // enumerations on Polarion admin settings).
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       if (isAdded) {
-        fieldChange.setElementsAdded(CastUtils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
+        fieldChange.setElementsAdded(
+            CastUtils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
       } else {
         fieldChange.setElementsRemoved(
             CastUtils.castUntypedListToStrList((List<?>) addedOrRemovedItems));
       }
       fieldChanges.add(fieldChange);
-    } else if (!CollectionsAndEnumsUtils.isCollectionLinkedWorkItemStructList(addedOrRemovedItems)) {
+    } else if (!CollectionsAndEnumsUtils.isCollectionLinkedWorkItemStructList(
+        addedOrRemovedItems)) {
       WorkItemFieldDiff fieldChange = new WorkItemFieldDiff(fieldDiff.getFieldName());
       try {
         if (isAdded) {
