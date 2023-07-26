@@ -7,8 +7,6 @@ import com.polarion.platform.persistence.diff.IDiffManager;
 import com.polarion.platform.persistence.diff.IFieldDiff;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.service.repository.ResourceException;
-import com.teamscale.polarion.plugin.model.LinkDirection;
-import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.CastUtils;
@@ -211,95 +209,5 @@ public class WorkItemUpdatesCollector {
       next++;
     }
     return index;
-  }
-
-  /**
-   * This creates work item opposite links for every existing direct link since Polarion does not
-   * provide a clear API for that. The method getLinkedWorkItemsStructsBack from Polarion API
-   * returns a collection of ILinkedWorkItemStruct with links roles as "triggered_by" which is not
-   * helpful for us to select specific requested links.
-   */
-  public void createOppositeLinkEntries(final Map<String, WorkItemForJson> allItemsToSend) {
-    Map<String, List<LinkedWorkItem>> oppositeLinksMap = new HashMap<>();
-
-    /*
-     * Problem: if there's a link from item A to item B and item A is not in allItemsToSend
-     * due to not being processing (time threshold hit) or being already processed (in the known items list)
-     * then the backward link IN type will not be created in B.
-     * The link would show when A is processed (OUT) normally. The current solution works when both
-     * items are processed in the same request.
-     *
-     * Fix idea: instead of using the allItemsToSend map, let's use allItemsLatest list.
-     * For each workItemId from that list, use the id to query the work item at the request endRevision date.
-     * 	Another for loop to go over the item links. For each link:
-     * 		If there's an OUT link on that item, get the item linked to that, and check if that item is part of the
-     * 			response (if item is in allItemsToSend). If yes, than create the opposite entry on that item.
-     * 		Else, go to the next link.
-     * */
-
-    allItemsToSend.forEach(
-        (workItemId, workItemForJson) -> {
-          // for each entry of the map allItemsToSend, get the list of linkedWorkItems
-          // for each linked WI, if the link is OUT and if the linkedWorkItem id is in allItemsId
-          // then, add the linkedWorkItem to the oppositeLinksMap mapped to a LinkedWorkItem
-          if (workItemForJson != null && workItemForJson.getLinkedWorkItems() != null) {
-            workItemForJson
-                .getLinkedWorkItems()
-                .forEach(
-                    linkedWorkItem -> {
-                      if (linkedWorkItem.getLinkDirection().equals(LinkDirection.OUT)
-                          && allItemsToSend.get(linkedWorkItem.getId()) != null) {
-
-                        ILinkRoleOpt linkRole = linkNamesMap.get(linkedWorkItem.getLinkRoleId());
-                        LinkedWorkItem newEntry =
-                            new LinkedWorkItem(
-                                workItemId,
-                                linkRole.getId(),
-                                linkRole.getOppositeName(),
-                                LinkDirection.IN);
-                        addNewOppositeLinkEntry(oppositeLinksMap, newEntry, linkedWorkItem.getId());
-                      }
-                    });
-          }
-        });
-
-    // run the oppositeLinksMap and, for each id/key get the value, access the allItemsToSend
-    // map, get the value from the id/key and add to the linkedWorkItems list the value
-    // from the oppositeLinksMap
-    oppositeLinksMap.forEach(
-        (workItemId, linkedWorkItems) -> {
-          WorkItemForJson workItemForJson = allItemsToSend.get(workItemId);
-          if (workItemForJson != null) {
-            workItemForJson.addAllLinkedWorkItems(linkedWorkItems);
-          }
-        });
-  }
-
-  /**
-   * Helper method for {@link #createOppositeLinkEntries(Map)}. It'll help building the map by
-   * creating a opposite link entry (LinkedWorkItem) on an existing workItemId already in the map
-   * (adding a new entry to its existing list) or starting a new list with a single element
-   */
-  private void addNewOppositeLinkEntry(
-      Map<String, List<LinkedWorkItem>> oppositeLinksMap,
-      LinkedWorkItem newEntry,
-      String workItemId) {
-
-    List<LinkedWorkItem> oppositeEntries = oppositeLinksMap.get(workItemId);
-    if (oppositeEntries != null) {
-      oppositeEntries.add(newEntry);
-    } else {
-      List<LinkedWorkItem> singleEntryList = new ArrayList<>();
-      singleEntryList.add(newEntry);
-      oppositeLinksMap.put(workItemId, singleEntryList);
-    }
-  }
-
-  /**
-   * Delegate to the helper {@link FieldUpdatesCollector} since that class is handling the backward
-   * links
-   */
-  public void createLinkChangesOppositeEntries(final Map<String, WorkItemForJson> allItemsToSend) {
-    fieldUpdatesCollector.createLinkChangesOppositeEntries(allItemsToSend);
   }
 }

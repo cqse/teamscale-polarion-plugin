@@ -14,7 +14,6 @@ import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.ITypedList;
 import com.polarion.subterra.base.location.ILocation;
-import com.teamscale.polarion.plugin.model.LinkDirection;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
@@ -169,7 +168,7 @@ public class CastUtils {
                             linkStruct.getLinkedItem().getId(),
                             linkStruct.getLinkRole().getId(),
                             linkStruct.getLinkRole().getName(),
-                            LinkDirection.OUT);
+                            linkStruct.getLinkRole().getOppositeName());
                       })
                   .collect(Collectors.toList());
       if (!linkedItems.isEmpty()) {

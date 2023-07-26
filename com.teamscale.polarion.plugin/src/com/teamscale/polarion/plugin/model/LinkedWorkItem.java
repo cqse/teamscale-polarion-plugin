@@ -9,14 +9,14 @@ public class LinkedWorkItem {
   private final String id;
   private final String linkRoleId;
   private final String linkRoleName;
-  private final LinkDirection linkDirection;
+  private final String oppositeLinkRoleName;
 
   public LinkedWorkItem(
-      String id, String linkRoleId, String linkRoleName, LinkDirection linkDirection) {
+      String id, String linkRoleId, String linkRoleName, String oppositeLinkRoleName) {
     this.id = id;
     this.linkRoleId = linkRoleId;
     this.linkRoleName = linkRoleName;
-    this.linkDirection = linkDirection;
+    this.oppositeLinkRoleName = oppositeLinkRoleName;
   }
 
   public String getId() {
@@ -31,8 +31,8 @@ public class LinkedWorkItem {
     return linkRoleName;
   }
 
-  public LinkDirection getLinkDirection() {
-    return linkDirection;
+  public String getOppositeLinkRoleName() {
+    return oppositeLinkRoleName;
   }
 
   /** LinkedWorkItem objects are compared by id */

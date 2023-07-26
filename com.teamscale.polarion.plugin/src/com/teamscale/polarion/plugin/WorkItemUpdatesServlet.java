@@ -82,7 +82,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   /**
    * This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
    * This provides O(1) access when, at the end, we need to go back and feed them with the work
-   * items opposite link changes.
+   * items opposite link changes. TODO: We can probably get rid of this map and turn into a list or
+   * WorkItemForJson objects.
    */
   private Map<String, WorkItemForJson> allItemsToSend;
 
@@ -372,14 +373,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     timeAfter = System.currentTimeMillis();
     logger.debug("Ended history processing. Execution time (ms): " + (timeAfter - timeBefore));
-
-    timeBefore = System.currentTimeMillis();
-
-    workItemUpdatesCollector.createOppositeLinkEntries(allItemsToSend);
-    workItemUpdatesCollector.createLinkChangesOppositeEntries(allItemsToSend);
-
-    timeAfter = System.currentTimeMillis();
-    logger.debug("Opposite links post-processing execution time (ms): " + (timeAfter - timeBefore));
 
     return allValidItemIdsLatest;
   }
