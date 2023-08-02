@@ -204,14 +204,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
     lastUpdate = Integer.parseInt(lastUpdateStr);
 
+    int latestRevInPolarion =
+        Integer.valueOf(trackerService.getDataService().getLastStorageRevision().getName());
     if (endRevisionStr == null) {
-      // process all the way to the latest by default
-      endRevision =
-          Integer.valueOf(trackerService.getDataService().getLastStorageRevision().getName());
+      // process all the way to the latest by default if endRevision is not passed in
+      endRevision = latestRevInPolarion;
     } else if (!validateRevisionNumberString(endRevisionStr)) {
       return false;
     } else {
-      endRevision = Integer.parseInt(endRevisionStr);
+      // We don't take an endRevision that's greater than the latest in Polarion at the moment
+      endRevision = Math.min(Integer.parseInt(endRevisionStr), latestRevInPolarion);
     }
 
     return (lastUpdate < endRevision);
