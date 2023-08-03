@@ -252,9 +252,26 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   }
 
   /**
-   * To avoid SQL injection issues or any unexpected behavior, we check if the variable pieces
-   * passed to this query are valid. See what we do in the following method: {@link
+   * Polarion does not provide a prepared statement or SQL query builder API. Therefore, to prevent
+   * SQL injection issues or any unexpected behavior, we check if the variables passed to this query
+   * are valid. See what we do in the following method: {@link
    * WorkItemUpdatesServlet#validateParameters(String, String, String)}
+   *
+   * <p>Besides, Polarion internally maintains a configurable set of invalid SQL commands for
+   * security reasons. See the following answer posted in the community forum: Since Polarion 22R2,
+   * there is the system configuration property com.polarion.platform.sql.invalidCommands If you
+   * don't configure it, the SQL query is not executed if the query contains one of the following
+   * default commands: "ABORT_SESSION", "ARRAY_GET", "CARDINALITY", "ARRAY_CONTAINS", "ARRAY_CAT",
+   * "ARRAY_APPEND", "ARRAY_MAX_CARDINALITY", "TRIM_ARRAY", "ARRAY_SLICE", "AUTOCOMMIT",
+   * "CANCEL_SESSION", "CASEWHEN", "COALESCE", "CONVERT", "CURRVAL", "CSVWRITE", "CURRENT_SCHEMA",
+   * "CURRENT_CATALOG", "DATABASE_PATH", "DATA_TYPE_SQL", "DB_OBJECT_ID", "DB_OBJECT_SQL", "DECODE",
+   * "DISK_SPACE_USED", "SIGNAL", "ESTIMATED_ENVELOPE", "FILE_READ", "FILE_WRITE", "GREATEST",
+   * "LEAST", "LOCK_MODE", "LOCK_TIMEOUT", "MEMORY_FREE", "MEMORY_USED", "NEXTVAL", "NULLIF",
+   * "NVL2", "READONLY", "ROWNUM", "SESSION_ID", "SET", "TRANSACTION_ID", "TRUNCATE_VALUE",
+   * "CURRENT_PATH", "CURRENT_ROLE", "CURRENT_USER", "H2VERSION"
+   *
+   * <p>Link to the <a
+   * href="https://community.sw.siemens.com/s/question/0D54O000087hf0wSAA/validate-sql-queries-before-running-them">thread</a>
    */
   private String buildSqlQuery(String projId, String spaceId, String docId) {
 
