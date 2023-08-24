@@ -417,7 +417,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Create the work item object as DELETED */
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
-    WorkItemForJson item = new WorkItemForJson(workItem.getId(), UpdateType.DELETED);
+    WorkItemForJson item =
+        new WorkItemForJson(workItem.getId(), workItem.getUri().toString(), UpdateType.DELETED);
     // Note: Items in the recycle bin can still undergo changes. For instance, if
     // any of their field values change, or their links, or even if their module changes id,
     // it'll generate a new revision and changes will be tracked by Polarion.

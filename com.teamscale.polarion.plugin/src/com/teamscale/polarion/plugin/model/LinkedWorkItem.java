@@ -7,13 +7,15 @@ package com.teamscale.polarion.plugin.model;
  */
 public class LinkedWorkItem {
   private final String id;
+  private final String uri;
   private final String linkRoleId;
   private final String linkRoleName;
   private final String oppositeLinkRoleName;
 
   public LinkedWorkItem(
-      String id, String linkRoleId, String linkRoleName, String oppositeLinkRoleName) {
+      String id, String uri, String linkRoleId, String linkRoleName, String oppositeLinkRoleName) {
     this.id = id;
+    this.uri = uri;
     this.linkRoleId = linkRoleId;
     this.linkRoleName = linkRoleName;
     this.oppositeLinkRoleName = oppositeLinkRoleName;
@@ -21,6 +23,10 @@ public class LinkedWorkItem {
 
   public String getId() {
     return id;
+  }
+
+  public String getUri() {
+    return uri;
   }
 
   public String getLinkRoleId() {

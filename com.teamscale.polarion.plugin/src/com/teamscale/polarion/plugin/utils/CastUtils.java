@@ -44,7 +44,9 @@ public class CastUtils {
       String[] includeLinkRoles,
       Map<String, ILinkRoleOpt> linkNamesMap) {
 
-    WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId(), UpdateType.UPDATED);
+    WorkItemForJson workItemForJson =
+        new WorkItemForJson(workItem.getId(), workItem.getUri().toString(), UpdateType.UPDATED);
+
     if (workItem.getRevision() != null) {
       workItemForJson.setRevision(workItem.getRevision());
     }
@@ -166,6 +168,7 @@ public class CastUtils {
 
                         return new LinkedWorkItem(
                             linkStruct.getLinkedItem().getId(),
+                            linkStruct.getLinkedItem().getUri().toString(),
                             linkStruct.getLinkRole().getId(),
                             linkStruct.getLinkRole().getName(),
                             linkStruct.getLinkRole().getOppositeName());

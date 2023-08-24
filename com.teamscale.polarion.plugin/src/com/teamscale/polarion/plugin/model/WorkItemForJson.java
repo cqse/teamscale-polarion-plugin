@@ -12,6 +12,7 @@ import java.util.Map;
 public class WorkItemForJson {
 
   private String id;
+  private String uri;
   private UpdateType updateType;
   private String revision;
   private String description;
@@ -47,12 +48,14 @@ public class WorkItemForJson {
 
   private Collection<WorkItemChange> workItemChanges;
 
-  public WorkItemForJson(String id) {
+  public WorkItemForJson(String id, String uri) {
     this.id = id;
+    this.uri = uri;
   }
 
-  public WorkItemForJson(String id, UpdateType updateType) {
+  public WorkItemForJson(String id, String uri, UpdateType updateType) {
     this.id = id;
+    this.uri = uri;
     this.updateType = updateType;
   }
 
@@ -62,6 +65,14 @@ public class WorkItemForJson {
 
   public void setId(String workItemId) {
     this.id = workItemId;
+  }
+
+  public String getUri() {
+    return uri;
+  }
+
+  public void setUri(String uri) {
+    this.uri = uri;
   }
 
   public UpdateType getUpdateType() {
