@@ -81,15 +81,13 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /**
    * This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
-   * This provides O(1) access when, at the end, we need to go back and feed them with the work
-   * items opposite link changes. TODO: We can probably get rid of this map and turn into a list or
-   * WorkItemForJson objects.
+   * This provides O(1) access when, at the end, when we need to send a list of processed item IDs
    */
   private Map<String, WorkItemForJson> allItemsToSend;
 
   /** Time limit to stop analyzing new items - triggers a partial response */
   private static final int TIME_THRESHOLD =
-      Integer.getInteger("com.teamscale.polarion.plugin.request-time-threshold", 30)
+      Integer.getInteger("com.teamscale.polarion.plugin.request-time-threshold", 20)
           * 1000; // milliseconds
 
   /**
@@ -156,7 +154,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
   }
 
-  /** Returns null if an error occur, otherwise returns a populated or empty string array */
+  /** Returns null if an error occurs, otherwise returns a populated or empty string array */
   private String[] readRequestBody(final HttpServletRequest request) throws IOException {
     String[] knownIds = null;
     StringBuilder jsonBody = new StringBuilder();
@@ -231,6 +229,12 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       endRevisionStr = "HEAD";
     } else {
       endRevisionStr = String.valueOf(endRevision);
+    }
+    if (responseType.equals(ResponseType.PARTIAL)) {
+      // If it's a PARTIAL response then it doesn't make sense to send all item ids since the only
+      // purpose for it is the diff check on the client. Client should only do this check after a
+      // complete
+      allValidItems = null;
     }
     Response response =
         new Response(
@@ -359,7 +363,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     boolean closing = false;
 
-    for (IWorkItem workItem : workItems) {
+    for (int i = 0; i < workItems.size() && !closing; i++) {
+      IWorkItem workItem = workItems.get(i);
 
       timeAfter = System.currentTimeMillis();
       if ((timeAfter - timeBefore) >= TIME_THRESHOLD) {
