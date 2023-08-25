@@ -87,7 +87,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Time limit to stop analyzing new items - triggers a partial response */
   private static final int TIME_THRESHOLD =
-      Integer.getInteger("com.teamscale.polarion.plugin.request-time-threshold", 20)
+      Integer.getInteger("com.teamscale.polarion.plugin.request-time-threshold", 15)
           * 1000; // milliseconds
 
   /**
