@@ -220,7 +220,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   private void sendResponse(HttpServletResponse resp, Collection<String> allValidItems)
       throws ServletException, IOException {
 
-    long timeBefore = System.currentTimeMillis();
+    final long timeBefore = System.currentTimeMillis();
 
     Gson gson = new Gson();
 
@@ -340,6 +340,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       String projId, String spaceId, String docId, String[] clientKnownIds)
       throws ResourceException {
 
+    final long timeBefore = System.currentTimeMillis();
+
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
 
     if (sqlQuery == null || sqlQuery.isEmpty()) {
@@ -349,8 +351,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     IDataService dataService = trackerService.getDataService();
 
     final List<String> allValidItemIdsLatest = new ArrayList<>();
-
-    long timeBefore = System.currentTimeMillis();
 
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 
