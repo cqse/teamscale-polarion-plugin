@@ -213,7 +213,7 @@ public class FieldUpdatesCollector {
               linkRole.getName(),
               linkRole.getOppositeName());
       List<String> single = new ArrayList<>(1);
-      single.add(linkStruct.getLinkedItem().getId());
+      single.add(linkStruct.getLinkedItem().getUri().toString());
       if (isAdded) {
         fieldChange.setElementsAdded(single);
       } else {

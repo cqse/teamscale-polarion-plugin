@@ -2,7 +2,7 @@ package com.teamscale.polarion.plugin.model;
 
 /**
  * Model class that represents a LinkedWorkItem containing the id of the linked WorkItem and the
- * link role id, name, and direction. Note: In Polarion the link role id might be different than
+ * link role id, name, and direction. Note: In Polarion the link role id might be different from
  * link role user-facing name).
  */
 public class LinkedWorkItem {
