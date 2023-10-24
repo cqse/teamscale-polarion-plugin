@@ -108,7 +108,7 @@ public class CastUtils {
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
     }
     if (workItem.getModule() != null) {
-    	IModule module = workItem.getModule();
+      IModule module = workItem.getModule();
       workItemForJson.setModuleId(module.getId());
       workItemForJson.setModuleTitle(module.getTitleOrName());
       workItemForJson.setModuleFolder(module.getModuleFolder());
