@@ -380,7 +380,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
         WorkItemForJson workItemForJson;
 
-        // This is because WIs moved to the recyble bin are still in the Polarion WI table we query
+        // This is because WIs moved to the recycle bin are still in the Polarion WI table we query
         if (wasMovedToRecycleBin(workItem) && shouldIncludeItemFromRecybleBin(workItem)) {
           workItemForJson = buildDeletedWorkItemForJson(workItem);
         } else {

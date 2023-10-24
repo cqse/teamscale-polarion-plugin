@@ -36,6 +36,7 @@ public class WorkItemForJson {
   private String updated; // date-time format
   private String moduleId;
   private String moduleTitle;
+  private String moduleFolder;
   private String projectId;
   private Map<String, Object> customFields;
   private List<String> assignees;
@@ -331,6 +332,14 @@ public class WorkItemForJson {
 
   public void setModuleTitle(String moduleTitle) {
     this.moduleTitle = moduleTitle;
+  }
+  
+  public String getModuleFolder( ) {
+  		return moduleFolder;
+  }
+  
+  public void setModuleFolder(String moduleFolder) {
+  		this.moduleFolder = moduleFolder;
   }
 
   public String getProjectId() {

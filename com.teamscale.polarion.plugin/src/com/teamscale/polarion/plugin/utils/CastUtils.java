@@ -108,10 +108,10 @@ public class CastUtils {
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
     }
     if (workItem.getModule() != null) {
-      workItemForJson.setModuleId(workItem.getModule().getId());
-    }
-    if (workItem.getModule() != null) {
-      workItemForJson.setModuleTitle(workItem.getModule().getTitleOrName());
+    	IModule module = workItem.getModule();
+      workItemForJson.setModuleId(module.getId());
+      workItemForJson.setModuleTitle(module.getTitleOrName());
+      workItemForJson.setModuleFolder(module.getModuleFolder());
     }
     if (workItem.getProjectId() != null) {
       workItemForJson.setProjectId(workItem.getProjectId());
