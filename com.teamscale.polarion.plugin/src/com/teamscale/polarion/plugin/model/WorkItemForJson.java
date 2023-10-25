@@ -333,13 +333,13 @@ public class WorkItemForJson {
   public void setModuleTitle(String moduleTitle) {
     this.moduleTitle = moduleTitle;
   }
-  
-  public String getModuleFolder( ) {
-  		return moduleFolder;
+
+  public String getModuleFolder() {
+    return moduleFolder;
   }
-  
+
   public void setModuleFolder(String moduleFolder) {
-  		this.moduleFolder = moduleFolder;
+    this.moduleFolder = moduleFolder;
   }
 
   public String getProjectId() {
