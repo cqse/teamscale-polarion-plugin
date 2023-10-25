@@ -154,9 +154,12 @@ public class CastUtils {
 
       List<ILinkedWorkItemStruct> directLinksStruct =
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsDirect();
+      List<ILinkedWorkItemStruct> backLinksStruct =
+              (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsBack();
+      directLinksStruct.addAll(backLinksStruct); // both direct and back links
       List<LinkedWorkItem> linkedItems =
           (List<LinkedWorkItem>)
-              directLinksStruct.stream()
+          directLinksStruct.stream()
                   .filter(
                       linkStruct ->
                           Arrays.asList(includeLinkRoles)

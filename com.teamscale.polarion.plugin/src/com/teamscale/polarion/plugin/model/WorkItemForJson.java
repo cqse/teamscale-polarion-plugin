@@ -44,7 +44,7 @@ public class WorkItemForJson {
   private String author;
   private List<String> categories;
   private String[] comments;
-  private List<LinkedWorkItem> linkedWorkItems; // All links (in and out links)
+  private List<LinkedWorkItem> linkedWorkItems;
   private List<String> watchers;
 
   private Collection<WorkItemChange> workItemChanges;
