@@ -102,7 +102,7 @@ public class CastUtils {
       workItemForJson.setTitle(workItem.getTitle());
     }
     if (workItem.getType() != null) {
-      workItemForJson.setType(workItem.getType().getName());
+      workItemForJson.setType(workItem.getType().getId());
     }
     if (workItem.getUpdated() != null) {
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
