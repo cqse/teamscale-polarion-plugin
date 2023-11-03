@@ -84,16 +84,16 @@ public class CastUtils {
       workItemForJson.setRemainingEstimate(workItem.getRemainingEstimate().toString());
     }
     if (workItem.getResolution() != null) {
-      workItemForJson.setResolution(workItem.getResolution().getName());
+      workItemForJson.setResolution(workItem.getResolution().getId());
     }
     if (workItem.getResolvedOn() != null) {
       workItemForJson.setResolvedOn(workItem.getResolvedOn().toInstant().toString());
     }
     if (workItem.getSeverity() != null) {
-      workItemForJson.setSeverity(workItem.getSeverity().getName());
+      workItemForJson.setSeverity(workItem.getSeverity().getId());
     }
     if (workItem.getStatus() != null) {
-      workItemForJson.setStatus(workItem.getStatus().getName());
+      workItemForJson.setStatus(workItem.getStatus().getId());
     }
     if (workItem.getTimeSpent() != null) {
       workItemForJson.setTimeSpent(workItem.getTimeSpent().toString());
