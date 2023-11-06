@@ -156,7 +156,7 @@ public class CastUtils {
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsDirect();
       List<ILinkedWorkItemStruct> backLinksStruct =
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsBack();
-      
+
       directLinksStruct.addAll(backLinksStruct); // both direct and back links
       List<LinkedWorkItem> linkedItems =
           (List<LinkedWorkItem>)

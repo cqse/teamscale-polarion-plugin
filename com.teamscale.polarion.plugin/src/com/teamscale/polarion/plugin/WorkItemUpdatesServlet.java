@@ -3,17 +3,14 @@ package com.teamscale.polarion.plugin;
 import com.google.gson.Gson;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.tracker.ITrackerService;
-import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IDataService;
-import com.polarion.platform.persistence.IEnumFactory;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.model.IPObjectList;
-import com.polarion.platform.persistence.spi.TypedEnumerationFactory;
 import com.polarion.platform.security.PermissionDeniedException;
 import com.polarion.platform.service.repository.AccessDeniedException;
 import com.polarion.platform.service.repository.ResourceException;
@@ -34,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -61,7 +57,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   private IModule module;
 
   /**
-   * If empty, no work item links should be included. For the values, we expect role names since 
+   * If empty, no work item links should be included. For the values, we expect role names since
    * this is the format utilized in the Teamscale configuration
    */
   private String[] includeLinkRoles;
@@ -535,17 +531,19 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
     List<IEnumOption> allLinkRoles = linkRolesEnum.getAllOptions();
     if (allLinkRoles == null || allLinkRoles.isEmpty()) {
-    	// if there aren't link roles set up then we cannot validate the requested linkRoles
-        return false;
+      // if there aren't link roles set up then we cannot validate the requested linkRoles
+      return false;
     }
     Set<String> allLinkRolesStrSet = new HashSet<String>();
-    allLinkRoles.stream().forEach(linkRole -> { 
-    		 allLinkRolesStrSet.add(linkRole.getName());
-    		 String oppositeName = linkRole.getProperty("oppositeName");
-    		 if (oppositeName != null && !oppositeName.isEmpty()) {
-    				 allLinkRolesStrSet.add(oppositeName);
-    		 }
-    });
+    allLinkRoles.stream()
+        .forEach(
+            linkRole -> {
+              allLinkRolesStrSet.add(linkRole.getName());
+              String oppositeName = linkRole.getProperty("oppositeName");
+              if (oppositeName != null && !oppositeName.isEmpty()) {
+                allLinkRolesStrSet.add(oppositeName);
+              }
+            });
     String[] newLinkRolesList =
         Arrays.asList(includeLinkRoles).stream()
             .filter(linkRole -> allLinkRolesStrSet.contains(linkRole))

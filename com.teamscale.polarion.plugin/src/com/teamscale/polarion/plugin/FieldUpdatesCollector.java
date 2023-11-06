@@ -22,9 +22,9 @@ import java.util.List;
 public class FieldUpdatesCollector {
 
   /**
-   * If empty, no work item links should be included. For the values, we expect role names since 
+   * If empty, no work item links should be included. For the values, we expect role names since
    * this is the format utilized in the Teamscale configuration. Invalid (not recognized) link role
-   * names will be ignored at {@link WorkItemUpdatesServlet}. If all link roles are invalid, the 
+   * names will be ignored at {@link WorkItemUpdatesServlet}. If all link roles are invalid, the
    * request will be processed as if no linkRoles were requested (as if this field was empty).
    */
   private final String[] includeLinkRoles;
