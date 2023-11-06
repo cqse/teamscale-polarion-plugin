@@ -43,26 +43,6 @@ public class CollectionsAndEnumsUtils {
   }
 
   /**
-   * Takes a raw collection of Polarion linkStructs and converts to a list of strings (the linked
-   * items IDs).
-   */
-  public static List<String> castLinkedWorkItemsToStrList(Collection linkedItems) {
-    List<String> result = new ArrayList<>();
-    if (isCollectionLinkedWorkItemStructList(linkedItems)) {
-      try {
-        List<ILinkedWorkItemStruct> collection = (List<ILinkedWorkItemStruct>) linkedItems;
-        result =
-            collection.stream()
-                .map(elem -> elem.getLinkedItem().getId())
-                .collect(Collectors.toList());
-      } catch (ClassCastException ex) {
-        // casting should not be an issue since we're checking it on the if
-      }
-    }
-    return result;
-  }
-
-  /**
    * This will return false if the list is empty, even if the list is of type
    * ILinkedWorkedItemStruct
    */
