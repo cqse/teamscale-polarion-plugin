@@ -156,6 +156,7 @@ public class CastUtils {
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsDirect();
       List<ILinkedWorkItemStruct> backLinksStruct =
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsBack();
+      
       directLinksStruct.addAll(backLinksStruct); // both direct and back links
       List<LinkedWorkItem> linkedItems =
           (List<LinkedWorkItem>)
@@ -163,11 +164,11 @@ public class CastUtils {
                   .filter(
                       linkStruct ->
                           Arrays.asList(includeLinkRoles)
-                              .contains(linkStruct.getLinkRole().getId()))
+                              .contains(linkStruct.getLinkRole().getName()))
                   .map(
                       linkStruct -> {
                         linkNamesMap.putIfAbsent(
-                            linkStruct.getLinkRole().getId(), linkStruct.getLinkRole());
+                            linkStruct.getLinkRole().getName(), linkStruct.getLinkRole());
 
                         return new LinkedWorkItem(
                             linkStruct.getLinkedItem().getId(),

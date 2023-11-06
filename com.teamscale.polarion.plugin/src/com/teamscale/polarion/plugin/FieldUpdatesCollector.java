@@ -22,9 +22,10 @@ import java.util.List;
 public class FieldUpdatesCollector {
 
   /**
-   * If empty, no work item links should be included. We expect role IDs (not role names). Invalid
-   * (not recognized) link role IDs will be ignored. If all link roles are invalid, the request will
-   * be processed as if no linkRoles were requested (as if this field was empty).
+   * If empty, no work item links should be included. For the values, we expect role names since 
+   * this is the format utilized in the Teamscale configuration. Invalid (not recognized) link role
+   * names will be ignored at {@link WorkItemUpdatesServlet}. If all link roles are invalid, the 
+   * request will be processed as if no linkRoles were requested (as if this field was empty).
    */
   private final String[] includeLinkRoles;
 
@@ -203,9 +204,9 @@ public class FieldUpdatesCollector {
       ILinkedWorkItemStruct linkStruct,
       boolean isAdded) {
 
-    if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getId()::equals)) {
+    if (Arrays.stream(includeLinkRoles).anyMatch(linkRole.getName()::equals)) {
       // Note: the link direction is always an out link (we don't need to check) since
-      // Polarion does not generate a fieldDiff for IN links.
+      // Polarion does not generate a fieldDiff for IN (aka back) links.
       WorkItemFieldDiff fieldChange =
           new LinkFieldDiff(
               fieldDiff.getFieldName(),
