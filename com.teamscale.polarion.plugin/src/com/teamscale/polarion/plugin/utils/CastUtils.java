@@ -157,8 +157,9 @@ public class CastUtils {
       List<ILinkedWorkItemStruct> backLinksStruct =
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsBack();
 
-      directLinksStruct.addAll(backLinksStruct); // both direct and back links
-      List<LinkedWorkItem> linkedItems =
+      // directLinksStruct.addAll(backLinksStruct); // both direct and back links
+      
+      List<LinkedWorkItem> linkedItemsDirect =
           (List<LinkedWorkItem>)
               directLinksStruct.stream()
                   .filter(
@@ -174,12 +175,34 @@ public class CastUtils {
                             linkStruct.getLinkedItem().getId(),
                             linkStruct.getLinkedItem().getUri().toString(),
                             linkStruct.getLinkRole().getId(),
-                            linkStruct.getLinkRole().getName(),
-                            linkStruct.getLinkRole().getOppositeName());
+                            linkStruct.getLinkRole().getName());
                       })
                   .collect(Collectors.toList());
-      if (!linkedItems.isEmpty()) {
-        workItemForJson.setLinkedWorkItems(linkedItems);
+      
+      List<LinkedWorkItem> linkedItemsBack =
+              (List<LinkedWorkItem>)
+              	backLinksStruct.stream()
+                      .filter(
+                          linkStruct ->
+                              Arrays.asList(includeLinkRoles)
+                                  .contains(linkStruct.getLinkRole().getOppositeName()))
+                      .map(
+                          linkStruct -> {
+                            linkNamesMap.putIfAbsent(
+                                linkStruct.getLinkRole().getOppositeName(), linkStruct.getLinkRole());
+
+                            return new LinkedWorkItem(
+                                linkStruct.getLinkedItem().getId(),
+                                linkStruct.getLinkedItem().getUri().toString(),
+                                linkStruct.getLinkRole().getId(),
+                                linkStruct.getLinkRole().getOppositeName());
+                          })
+                      .collect(Collectors.toList());
+      if (!linkedItemsDirect.isEmpty()) {
+        workItemForJson.setLinkedWorkItems(linkedItemsDirect);
+      }
+      if (!linkedItemsBack.isEmpty()) {
+      		workItemForJson.addAllLinkedWorkItems(linkedItemsBack);
       }
     }
 
