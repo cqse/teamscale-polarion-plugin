@@ -158,7 +158,7 @@ public class CastUtils {
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsBack();
 
       // directLinksStruct.addAll(backLinksStruct); // both direct and back links
-      
+
       List<LinkedWorkItem> linkedItemsDirect =
           (List<LinkedWorkItem>)
               directLinksStruct.stream()
@@ -178,31 +178,31 @@ public class CastUtils {
                             linkStruct.getLinkRole().getName());
                       })
                   .collect(Collectors.toList());
-      
-      List<LinkedWorkItem> linkedItemsBack =
-              (List<LinkedWorkItem>)
-              	backLinksStruct.stream()
-                      .filter(
-                          linkStruct ->
-                              Arrays.asList(includeLinkRoles)
-                                  .contains(linkStruct.getLinkRole().getOppositeName()))
-                      .map(
-                          linkStruct -> {
-                            linkNamesMap.putIfAbsent(
-                                linkStruct.getLinkRole().getOppositeName(), linkStruct.getLinkRole());
 
-                            return new LinkedWorkItem(
-                                linkStruct.getLinkedItem().getId(),
-                                linkStruct.getLinkedItem().getUri().toString(),
-                                linkStruct.getLinkRole().getId(),
-                                linkStruct.getLinkRole().getOppositeName());
-                          })
-                      .collect(Collectors.toList());
+      List<LinkedWorkItem> linkedItemsBack =
+          (List<LinkedWorkItem>)
+              backLinksStruct.stream()
+                  .filter(
+                      linkStruct ->
+                          Arrays.asList(includeLinkRoles)
+                              .contains(linkStruct.getLinkRole().getOppositeName()))
+                  .map(
+                      linkStruct -> {
+                        linkNamesMap.putIfAbsent(
+                            linkStruct.getLinkRole().getOppositeName(), linkStruct.getLinkRole());
+
+                        return new LinkedWorkItem(
+                            linkStruct.getLinkedItem().getId(),
+                            linkStruct.getLinkedItem().getUri().toString(),
+                            linkStruct.getLinkRole().getId(),
+                            linkStruct.getLinkRole().getOppositeName());
+                      })
+                  .collect(Collectors.toList());
       if (!linkedItemsDirect.isEmpty()) {
         workItemForJson.setLinkedWorkItems(linkedItemsDirect);
       }
       if (!linkedItemsBack.isEmpty()) {
-      		workItemForJson.addAllLinkedWorkItems(linkedItemsBack);
+        workItemForJson.addAllLinkedWorkItems(linkedItemsBack);
       }
     }
 
