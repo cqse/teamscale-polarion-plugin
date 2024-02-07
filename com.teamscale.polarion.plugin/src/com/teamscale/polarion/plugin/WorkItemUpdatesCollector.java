@@ -103,23 +103,18 @@ public class WorkItemUpdatesCollector {
               workItemChanges, workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
       // Using the endIndex to return the workItem as in the endRevision # (not necessarily the
       // latest version of the item)
+      UpdateType updateType = UpdateType.UPDATED;
       if (endIndex == 0) {
-        workItemForJson =
-            CastUtils.castWorkItem(
-                workItemHistory.get(endIndex),
-                includeCustomFields,
-                includeLinkRoles,
-                linkNamesMap,
-                UpdateType.CREATED);
-      } else if (endIndex > 0) {
-        workItemForJson =
-            CastUtils.castWorkItem(
-                workItemHistory.get(endIndex),
-                includeCustomFields,
-                includeLinkRoles,
-                linkNamesMap,
-                UpdateType.UPDATED);
-      }
+      		// this means will send the item in its CREATED state
+      		updateType = UpdateType.CREATED;
+      } // otherwise, endIndex > 0, the item by the endRevision goes as an UPDATED state
+      workItemForJson =
+              CastUtils.castWorkItem(
+                  workItemHistory.get(endIndex),
+                  includeCustomFields,
+                  includeLinkRoles,
+                  linkNamesMap,
+                  updateType);
       workItemForJson.setWorkItemChanges(workItemChanges);
     } else {
       /**
