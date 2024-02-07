@@ -7,6 +7,7 @@ import com.polarion.platform.persistence.diff.IDiffManager;
 import com.polarion.platform.persistence.diff.IFieldDiff;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.service.repository.ResourceException;
+import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemChange;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.CastUtils;
@@ -68,7 +69,7 @@ public class WorkItemUpdatesCollector {
     }
 
     WorkItemForJson workItemForJson = null;
-
+ // TODO: call diffManager.generateHistory instead which will return IChange[]
     IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
     if (workItemHistory != null) {
       if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
@@ -77,7 +78,7 @@ public class WorkItemUpdatesCollector {
         if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
           workItemForJson =
               CastUtils.castWorkItem(
-                  workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap);
+                  workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap, UpdateType.CREATED);
         }
       } else if (workItemHistory.size() > 1) {
         /**
@@ -105,7 +106,7 @@ public class WorkItemUpdatesCollector {
                   workItemHistory.get(endIndex),
                   includeCustomFields,
                   includeLinkRoles,
-                  linkNamesMap);
+                  linkNamesMap, UpdateType.UPDATED);
           workItemForJson.setWorkItemChanges(workItemChanges);
         }
       } else {
@@ -188,7 +189,6 @@ public class WorkItemUpdatesCollector {
       List<IWorkItem> workItemHistory,
       IDiffManager diffManager,
       int lastUpdateIndex) {
-
     int index = lastUpdateIndex;
     int next = index + 1;
     while (next < workItemHistory.size()
