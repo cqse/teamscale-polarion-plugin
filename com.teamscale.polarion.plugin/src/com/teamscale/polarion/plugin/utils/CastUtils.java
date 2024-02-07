@@ -42,7 +42,8 @@ public class CastUtils {
       IWorkItem workItem,
       String[] includeCustomFields,
       String[] includeLinkRoles,
-      Map<String, ILinkRoleOpt> linkNamesMap, UpdateType updateType) {
+      Map<String, ILinkRoleOpt> linkNamesMap,
+      UpdateType updateType) {
 
     WorkItemForJson workItemForJson =
         new WorkItemForJson(workItem.getId(), workItem.getUri().toString(), updateType);

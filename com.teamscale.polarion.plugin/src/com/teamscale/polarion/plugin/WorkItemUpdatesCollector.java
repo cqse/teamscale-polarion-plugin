@@ -69,7 +69,7 @@ public class WorkItemUpdatesCollector {
     }
 
     WorkItemForJson workItemForJson = null;
- // TODO: call diffManager.generateHistory instead which will return IChange[]
+    // TODO: call diffManager.generateHistory instead which will return IChange[]
     IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
     if (workItemHistory != null) {
       if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
@@ -78,7 +78,11 @@ public class WorkItemUpdatesCollector {
         if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
           workItemForJson =
               CastUtils.castWorkItem(
-                  workItemHistory.get(0), includeCustomFields, includeLinkRoles, linkNamesMap, UpdateType.CREATED);
+                  workItemHistory.get(0),
+                  includeCustomFields,
+                  includeLinkRoles,
+                  linkNamesMap,
+                  UpdateType.CREATED);
         }
       } else if (workItemHistory.size() > 1) {
         /**
@@ -106,7 +110,8 @@ public class WorkItemUpdatesCollector {
                   workItemHistory.get(endIndex),
                   includeCustomFields,
                   includeLinkRoles,
-                  linkNamesMap, UpdateType.UPDATED);
+                  linkNamesMap,
+                  UpdateType.UPDATED);
           workItemForJson.setWorkItemChanges(workItemChanges);
         }
       } else {
