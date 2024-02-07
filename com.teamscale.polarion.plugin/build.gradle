@@ -4,7 +4,7 @@ plugins {
 
 description = "Teamscale Polarion plugin for Polarion v22 R2"
 
-version = '0.0.4'
+version = '0.0.5'
 
 
 sourceSets {
