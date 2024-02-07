@@ -71,64 +71,70 @@ public class WorkItemUpdatesCollector {
     WorkItemForJson workItemForJson = null;
     // TODO: call diffManager.generateHistory instead which will return IChange[]
     IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
-    if (workItemHistory != null) {
-      if (workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
-        // No changes in history when size == 1 (the WI remains as created)
-        // We then return only if the item was created within the revision boundaries of the request
-        if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
-          workItemForJson =
-              CastUtils.castWorkItem(
-                  workItemHistory.get(0),
-                  includeCustomFields,
-                  includeLinkRoles,
-                  linkNamesMap,
-                  UpdateType.CREATED);
-        }
-      } else if (workItemHistory.size() > 1) {
-        /**
-         * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
-         * (last)."
-         * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
-         * Then, we get the last one from the history as the current revision
-         */
-        int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory);
-
-        if (lastUpdateIndex < 0) {
-          return null;
-        }
-
-        IDiffManager diffManager = dataService.getDiffManager();
-        Collection<WorkItemChange> workItemChanges = new ArrayList<>();
-        int endIndex =
-            collectWorkItemChanges(
-                workItemChanges, workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
-        // Using the endIndex to return the workItem as in the endRevision # (not necessarily the
-        // latest version of the item)
-        if (endIndex >= 0) {
-          workItemForJson =
-              CastUtils.castWorkItem(
-                  workItemHistory.get(endIndex),
-                  includeCustomFields,
-                  includeLinkRoles,
-                  linkNamesMap,
-                  UpdateType.UPDATED);
-          workItemForJson.setWorkItemChanges(workItemChanges);
-        }
-      } else {
-        /**
-         * No history. Empty list. From Polarion JavaDoc: "An empty list is returned if the object
-         * does not support history retrieval."
-         * "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
-         *
-         * <p>Since we're grabbing WIs (and they support history retrieval), as far as we can tell
-         * from Polarion docs, this else will never execute. If for some reason it does happen, we
-         * throw an a runtime exception. The rationale is: if we cannot return the history of an
-         * item, it's better to not fulfill the request and return a server error rather than
-         * skipping the item and returning a state that does not necessarily reflect the work item
-         * history which can potentially lead to inconsistencies on the client side.
-         */
-        throw new ResourceException(workItem.getLocation());
+    if (workItemHistory != null && workItemHistory.size() == 1 && workItemHistory.get(0) != null) {
+      // No changes in history when size == 1 (the WI remains as created)
+      // We then return only if the item was created within the revision boundaries of the request
+      if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
+        workItemForJson =
+            CastUtils.castWorkItem(
+                workItemHistory.get(0),
+                includeCustomFields,
+                includeLinkRoles,
+                linkNamesMap,
+                UpdateType.CREATED);
       }
+    } else if (workItemHistory != null && workItemHistory.size() > 1) {
+      /**
+       * From Polarion JavaDoc: "The history list is sorted from the oldest (first) to the newest
+       * (last)."
+       * https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)
+       * Then, we get the last one from the history as the current revision
+       */
+      int lastUpdateIndex = searchIndexWorkItemHistory(workItemHistory);
+
+      if (lastUpdateIndex < 0) {
+        return null;
+      }
+
+      IDiffManager diffManager = dataService.getDiffManager();
+      Collection<WorkItemChange> workItemChanges = new ArrayList<>();
+      int endIndex =
+          collectWorkItemChanges(
+              workItemChanges, workItem.getId(), workItemHistory, diffManager, lastUpdateIndex);
+      // Using the endIndex to return the workItem as in the endRevision # (not necessarily the
+      // latest version of the item)
+      if (endIndex == 0) {
+          workItemForJson =
+                  CastUtils.castWorkItem(
+                      workItemHistory.get(endIndex),
+                      includeCustomFields,
+                      includeLinkRoles,
+                      linkNamesMap,
+                      UpdateType.CREATED);
+      } else if (endIndex > 0) {
+          workItemForJson =
+                  CastUtils.castWorkItem(
+                      workItemHistory.get(endIndex),
+                      includeCustomFields,
+                      includeLinkRoles,
+                      linkNamesMap,
+                      UpdateType.UPDATED);        		
+      }
+      workItemForJson.setWorkItemChanges(workItemChanges);
+    } else {
+      /**
+       * No history. Empty list. From Polarion JavaDoc: "An empty list is returned if the object
+       * does not support history retrieval."
+       * "https://almdemo.polarion.com/polarion/sdk/doc/javadoc/com/polarion/platform/persistence/IDataService.html#getObjectHistory(T)"
+       *
+       * <p>Since we're grabbing WIs (and they support history retrieval), as far as we can tell
+       * from Polarion docs, this else will never execute. If for some reason it does happen, we
+       * throw an a runtime exception. The rationale is: if we cannot return the history of an
+       * item, it's better to not fulfill the request and return a server error rather than
+       * skipping the item and returning a state that does not necessarily reflect the work item
+       * history which can potentially lead to inconsistencies on the client side.
+       */
+      throw new ResourceException(workItem.getLocation());
     }
     return workItemForJson;
   }
