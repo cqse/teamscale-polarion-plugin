@@ -105,16 +105,16 @@ public class WorkItemUpdatesCollector {
       // latest version of the item)
       UpdateType updateType = UpdateType.UPDATED;
       if (endIndex == 0) {
-      		// this means will send the item in its CREATED state
-      		updateType = UpdateType.CREATED;
+        // this means will send the item in its CREATED state
+        updateType = UpdateType.CREATED;
       } // otherwise, endIndex > 0, the item by the endRevision goes as an UPDATED state
       workItemForJson =
-              CastUtils.castWorkItem(
-                  workItemHistory.get(endIndex),
-                  includeCustomFields,
-                  includeLinkRoles,
-                  linkNamesMap,
-                  updateType);
+          CastUtils.castWorkItem(
+              workItemHistory.get(endIndex),
+              includeCustomFields,
+              includeLinkRoles,
+              linkNamesMap,
+              updateType);
       workItemForJson.setWorkItemChanges(workItemChanges);
     } else {
       /**
