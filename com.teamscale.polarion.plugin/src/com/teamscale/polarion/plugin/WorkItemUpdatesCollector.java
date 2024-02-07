@@ -104,21 +104,21 @@ public class WorkItemUpdatesCollector {
       // Using the endIndex to return the workItem as in the endRevision # (not necessarily the
       // latest version of the item)
       if (endIndex == 0) {
-          workItemForJson =
-                  CastUtils.castWorkItem(
-                      workItemHistory.get(endIndex),
-                      includeCustomFields,
-                      includeLinkRoles,
-                      linkNamesMap,
-                      UpdateType.CREATED);
+        workItemForJson =
+            CastUtils.castWorkItem(
+                workItemHistory.get(endIndex),
+                includeCustomFields,
+                includeLinkRoles,
+                linkNamesMap,
+                UpdateType.CREATED);
       } else if (endIndex > 0) {
-          workItemForJson =
-                  CastUtils.castWorkItem(
-                      workItemHistory.get(endIndex),
-                      includeCustomFields,
-                      includeLinkRoles,
-                      linkNamesMap,
-                      UpdateType.UPDATED);        		
+        workItemForJson =
+            CastUtils.castWorkItem(
+                workItemHistory.get(endIndex),
+                includeCustomFields,
+                includeLinkRoles,
+                linkNamesMap,
+                UpdateType.UPDATED);
       }
       workItemForJson.setWorkItemChanges(workItemChanges);
     } else {
@@ -129,10 +129,10 @@ public class WorkItemUpdatesCollector {
        *
        * <p>Since we're grabbing WIs (and they support history retrieval), as far as we can tell
        * from Polarion docs, this else will never execute. If for some reason it does happen, we
-       * throw an a runtime exception. The rationale is: if we cannot return the history of an
-       * item, it's better to not fulfill the request and return a server error rather than
-       * skipping the item and returning a state that does not necessarily reflect the work item
-       * history which can potentially lead to inconsistencies on the client side.
+       * throw an a runtime exception. The rationale is: if we cannot return the history of an item,
+       * it's better to not fulfill the request and return a server error rather than skipping the
+       * item and returning a state that does not necessarily reflect the work item history which
+       * can potentially lead to inconsistencies on the client side.
        */
       throw new ResourceException(workItem.getLocation());
     }
