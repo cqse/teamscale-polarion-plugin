@@ -13,6 +13,7 @@ public class WorkItemChange {
 
   private Collection<WorkItemFieldDiff> fieldChanges;
 
+  /** User id of who authored the changes (in this revision) */
   private final String revAuthorId;
 
   public WorkItemChange(
