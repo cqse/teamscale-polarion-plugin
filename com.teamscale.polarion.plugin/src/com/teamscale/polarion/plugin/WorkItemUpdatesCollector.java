@@ -3,7 +3,6 @@ package com.teamscale.polarion.plugin;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.platform.persistence.IDataService;
-import com.polarion.platform.persistence.diff.IChange;
 import com.polarion.platform.persistence.diff.IDiffManager;
 import com.polarion.platform.persistence.diff.IFieldDiff;
 import com.polarion.platform.persistence.model.IPObjectList;
@@ -15,7 +14,6 @@ import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.CastUtils;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -79,7 +77,7 @@ public class WorkItemUpdatesCollector {
       if (Integer.valueOf(workItemHistory.get(0).getRevision()) <= endRevision) {
         workItemForJson =
             CastUtils.castWorkItem(
-            		workItemHistory.get(0),
+                workItemHistory.get(0),
                 includeCustomFields,
                 includeLinkRoles,
                 linkNamesMap,
@@ -107,12 +105,13 @@ public class WorkItemUpdatesCollector {
       // latest version of the item)
       UpdateType updateType = UpdateType.UPDATED;
       if (endIndex == 0) {
-        // this means will send the item in its CREATED state since its changes occurred after endRevision
+        // this means will send the item in its CREATED state since its changes occurred after
+        // endRevision
         updateType = UpdateType.CREATED;
       } // otherwise, endIndex > 0, the item by the endRevision goes as an UPDATED state
       workItemForJson =
           CastUtils.castWorkItem(
-          				workItemHistory.get(endIndex),
+              workItemHistory.get(endIndex),
               includeCustomFields,
               includeLinkRoles,
               linkNamesMap,
@@ -204,10 +203,13 @@ public class WorkItemUpdatesCollector {
 
       if (Integer.valueOf(workItemHistory.get(next).getRevision()) > lastUpdate) {
         IFieldDiff[] fieldDiffs =
-            dataService.getDiffManager().generateDiff(
-                workItemHistory.get(index), workItemHistory.get(next), new HashSet<>());
+            dataService
+                .getDiffManager()
+                .generateDiff(
+                    workItemHistory.get(index), workItemHistory.get(next), new HashSet<>());
         String wiChangeRev = workItemHistory.get(next).getRevision();
-        IRevision revObj = dataService.getRevision(workItemHistory.get(next).getContextId(), wiChangeRev);
+        IRevision revObj =
+            dataService.getRevision(workItemHistory.get(next).getContextId(), wiChangeRev);
         String revAuthorId = revObj.getStringAuthor();
         WorkItemChange fieldChangesToAdd =
             fieldUpdatesCollector.collectFieldChanges(

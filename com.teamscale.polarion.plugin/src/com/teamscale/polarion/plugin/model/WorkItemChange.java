@@ -1,6 +1,5 @@
 package com.teamscale.polarion.plugin.model;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 /**
@@ -13,10 +12,11 @@ public class WorkItemChange {
   private final String revision;
 
   private Collection<WorkItemFieldDiff> fieldChanges;
-  
+
   private final String revAuthorId;
 
-  public WorkItemChange(String revision, Collection<WorkItemFieldDiff> fieldChanges, String revAuthorId) {
+  public WorkItemChange(
+      String revision, Collection<WorkItemFieldDiff> fieldChanges, String revAuthorId) {
     this.revision = revision;
     this.fieldChanges = fieldChanges;
     this.revAuthorId = revAuthorId;
@@ -33,8 +33,8 @@ public class WorkItemChange {
   public Collection<WorkItemFieldDiff> getFieldChanges() {
     return fieldChanges;
   }
-  
+
   public String getRevAuthorId() {
-  		return revAuthorId;
+    return revAuthorId;
   }
 }
