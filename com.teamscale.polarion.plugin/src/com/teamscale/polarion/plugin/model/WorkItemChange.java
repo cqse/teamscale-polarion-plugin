@@ -13,15 +13,13 @@ public class WorkItemChange {
   private final String revision;
 
   private Collection<WorkItemFieldDiff> fieldChanges;
+  
+  private final String revAuthorId;
 
-  public WorkItemChange(String revision, Collection<WorkItemFieldDiff> fieldChanges) {
+  public WorkItemChange(String revision, Collection<WorkItemFieldDiff> fieldChanges, String revAuthorId) {
     this.revision = revision;
     this.fieldChanges = fieldChanges;
-  }
-
-  public WorkItemChange(String revision) {
-    this.revision = revision;
-    this.fieldChanges = new ArrayList<>();
+    this.revAuthorId = revAuthorId;
   }
 
   public String getRevision() {
@@ -34,5 +32,9 @@ public class WorkItemChange {
 
   public Collection<WorkItemFieldDiff> getFieldChanges() {
     return fieldChanges;
+  }
+  
+  public String getRevAuthorId() {
+  		return revAuthorId;
   }
 }

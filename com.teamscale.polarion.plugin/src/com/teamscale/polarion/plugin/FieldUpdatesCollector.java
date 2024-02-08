@@ -38,7 +38,7 @@ public class FieldUpdatesCollector {
    * on the diff created at {@link #collectWorkItemChanges(String, List, IDiffManager, int)}
    */
   public WorkItemChange collectFieldChanges(
-      String workItemId, IFieldDiff[] fieldDiffs, String revision) {
+      String workItemId, IFieldDiff[] fieldDiffs, String revision, String revAuthorId) {
 
     if (fieldDiffs == null || fieldDiffs.length == 0) {
       return null;
@@ -58,7 +58,7 @@ public class FieldUpdatesCollector {
         fieldChanges.add(fieldChange);
       }
     }
-    return new WorkItemChange(revision, fieldChanges);
+    return new WorkItemChange(revision, fieldChanges, revAuthorId);
   }
 
   /**
