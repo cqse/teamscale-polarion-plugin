@@ -20,18 +20,17 @@ import com.teamscale.polarion.plugin.model.ResponseType;
 import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
 import com.teamscale.polarion.plugin.utils.PluginLogger;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -48,18 +47,6 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  /**
-   * This is the Kth revision given a lastUpdate revision to look at. This is necessary due to
-   * performance reasons. In some documents with high revision activity, we cannot process the whole
-   * set of WIs at one request. Since Polarion API doesn't provide a way to request WI history by
-   * revision range Then our solution involves looking at WIs history in chunks of K revisions. The
-   * value of K_CONST is empirically derived.
-   */
-  private static final int K_CONST = 10;
-
-  /** This will keep a sorted set of revision numbers based on the WIs revisions in the doc */
-  private final SortedSet<Integer> revisionSortedSet = new TreeSet<Integer>();
-
   private ResponseType responseType;
 
   private final PluginLogger logger = new PluginLogger();
@@ -70,8 +57,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   private IModule module;
 
   /**
-   * If empty, no work item links should be included. For the values, we expect role IDs (not role
-   * names)
+   * If empty, no work item links should be included. For the values, we expect role names since
+   * this is the format utilized in the Teamscale configuration
    */
   private String[] includeLinkRoles;
 
@@ -94,10 +81,14 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /**
    * This is to keep in memory all result objects (type WorkItemsForJson) indexed by WorkItem ID
-   * This provides O(1) access when, at the end, we need to go back and feed them with the work
-   * items opposite link changes.
+   * This provides O(1) access when, at the end, when we need to send a list of processed item IDs
    */
   private Map<String, WorkItemForJson> allItemsToSend;
+
+  /** Time limit to stop analyzing new items - triggers a partial response */
+  private static final int TIME_THRESHOLD =
+      Integer.getInteger("com.teamscale.polarion.plugin.request-time-threshold", 15)
+          * 1000; // milliseconds
 
   /**
    * @see javax.servlet.http.HttpServlet#doGet(javax.servlet.http.HttpServletRequest,
@@ -107,40 +98,46 @@ public class WorkItemUpdatesServlet extends HttpServlet {
   protected void doGet(final HttpServletRequest req, final HttpServletResponse res)
       throws ServletException, IOException {
 
-    String projId = (String) req.getAttribute("project");
-    String spaceId = (String) req.getAttribute("space");
-    String docId = (String) req.getAttribute("document");
+    String[] clientKnownIds = readRequestBody(req);
+    if (clientKnownIds == null) {
+      logger.error("Error attempting to read request body.");
+      res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    // We assume a complete response unless it's close to timeout then we turn it into partial.
+    responseType = ResponseType.COMPLETE;
 
     String lastUpdateStr = req.getParameter("lastUpdate");
     String endRevisionStr = req.getParameter("endRevision");
 
-    workItemTypes = req.getParameterValues("includedWorkItemTypes");
-
-    includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
-
-    includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
-
     if (!processRevisionNumbers(lastUpdateStr, endRevisionStr)) {
       String msg = "Invalid revision numbers. Review lastUpdate and" + " endRevision parameters.";
-      logger.info(msg);
+      logger.error(msg);
       res.sendError(HttpServletResponse.SC_BAD_REQUEST, msg);
       return;
     }
 
+    workItemTypes = req.getParameterValues("includedWorkItemTypes");
+    includeCustomFields = req.getParameterValues("includedWorkItemCustomFields");
+    includeLinkRoles = req.getParameterValues("includedWorkItemLinkRoles");
+
+    String projId = (String) req.getAttribute("project");
+    String spaceId = (String) req.getAttribute("space");
+    String docId = (String) req.getAttribute("document");
+
     try {
-      // To prevent SQL injection issues
-      // Check if the request params are valid IDs before putting them into the SQL query
-      if (validateParameters(projId, spaceId, docId)) {
+      allItemsToSend = new HashMap<>();
 
-        allItemsToSend = new HashMap<>();
+      Collection<String> allValidItemsLatest =
+          retrieveChanges(projId, spaceId, docId, clientKnownIds);
 
-        Collection<String> allValidItemsLatest = retrieveChanges(projId, spaceId, docId);
-        sendResponse(res, allValidItemsLatest);
-
-        logger.info("Successful response sent");
-      } else {
-        logger.info("Invalid conbination of projectId/folderId/documentId");
+      if (allValidItemsLatest == null) {
+        logger.error("Invalid combination of projectId/folderId/documentId");
         res.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested resource is not found");
+      } else {
+        sendResponse(res, allValidItemsLatest);
+        logger.info("Successful response sent");
       }
     } catch (PermissionDeniedException permissionDenied) {
       logger.error("Permission denied raised by Polarion", permissionDenied);
@@ -155,6 +152,30 @@ public class WorkItemUpdatesServlet extends HttpServlet {
           resourceException);
       res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     }
+  }
+
+  /** Returns null if an error occurs, otherwise returns a populated or empty string array */
+  private String[] readRequestBody(final HttpServletRequest request) throws IOException {
+    String[] knownIds = null;
+    StringBuilder jsonBody = new StringBuilder();
+    String line;
+    try {
+      BufferedReader reader = request.getReader();
+      line = reader.readLine();
+      while (line != null) {
+        jsonBody.append(line);
+        line = reader.readLine();
+      }
+    } catch (IOException e) {
+      return knownIds;
+    }
+    if (jsonBody.length() == 0) {
+      return new String[] {};
+    }
+
+    Gson gson = new Gson();
+    knownIds = gson.fromJson(jsonBody.toString(), String[].class);
+    return knownIds;
   }
 
   /**
@@ -181,13 +202,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
     lastUpdate = Integer.parseInt(lastUpdateStr);
 
+    int latestRevInPolarion =
+        Integer.valueOf(trackerService.getDataService().getLastStorageRevision().getName());
     if (endRevisionStr == null) {
-      // process all the way to HEAD by default
-      endRevision = Integer.MAX_VALUE;
+      // process all the way to the latest by default if endRevision is not passed in
+      endRevision = latestRevInPolarion;
     } else if (!validateRevisionNumberString(endRevisionStr)) {
       return false;
     } else {
-      endRevision = Integer.parseInt(endRevisionStr);
+      // We don't take an endRevision that's greater than the latest in Polarion at the moment
+      endRevision = Math.min(Integer.parseInt(endRevisionStr), latestRevInPolarion);
     }
 
     return (lastUpdate < endRevision);
@@ -195,6 +219,9 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private void sendResponse(HttpServletResponse resp, Collection<String> allValidItems)
       throws ServletException, IOException {
+
+    final long timeBefore = System.currentTimeMillis();
+
     Gson gson = new Gson();
 
     String endRevisionStr;
@@ -203,9 +230,16 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     } else {
       endRevisionStr = String.valueOf(endRevision);
     }
+    if (responseType.equals(ResponseType.PARTIAL)) {
+      // If it's a PARTIAL response then it doesn't make sense to send all item ids since the only
+      // purpose for it is the diff check on the client. Client should only do this check after a
+      // complete
+      allValidItems = null;
+    }
     Response response =
         new Response(
             allValidItems,
+            allItemsToSend.keySet(),
             allItemsToSend.values(),
             responseType,
             String.valueOf(lastUpdate + 1),
@@ -215,14 +249,39 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     resp.setContentType("application/json");
     PrintWriter out = resp.getWriter();
     out.print(jsonResult);
+
+    long timeAfter = System.currentTimeMillis();
+    logger.debug(
+        " Json serialization and response sent. Execution time (ms): " + (timeAfter - timeBefore));
   }
 
   /**
-   * To avoid SQL injection issues or any unexpected behavior, check if the variable pieces injected
-   * in this query are valid. See what we do in the following method: {@link
+   * Polarion does not provide a prepared statement or SQL query builder API. Therefore, to prevent
+   * SQL injection issues or any unexpected behavior, we check if the variables passed to this query
+   * are valid. See what we do in the following method: {@link
    * WorkItemUpdatesServlet#validateParameters(String, String, String)}
+   *
+   * <p>Besides, Polarion internally maintains a configurable set of invalid SQL commands for
+   * security reasons. See the following answer posted in the community forum: Since Polarion 22R2,
+   * there is the system configuration property com.polarion.platform.sql.invalidCommands If you
+   * don't configure it, the SQL query is not executed if the query contains one of the following
+   * default commands: "ABORT_SESSION", "ARRAY_GET", "CARDINALITY", "ARRAY_CONTAINS", "ARRAY_CAT",
+   * "ARRAY_APPEND", "ARRAY_MAX_CARDINALITY", "TRIM_ARRAY", "ARRAY_SLICE", "AUTOCOMMIT",
+   * "CANCEL_SESSION", "CASEWHEN", "COALESCE", "CONVERT", "CURRVAL", "CSVWRITE", "CURRENT_SCHEMA",
+   * "CURRENT_CATALOG", "DATABASE_PATH", "DATA_TYPE_SQL", "DB_OBJECT_ID", "DB_OBJECT_SQL", "DECODE",
+   * "DISK_SPACE_USED", "SIGNAL", "ESTIMATED_ENVELOPE", "FILE_READ", "FILE_WRITE", "GREATEST",
+   * "LEAST", "LOCK_MODE", "LOCK_TIMEOUT", "MEMORY_FREE", "MEMORY_USED", "NEXTVAL", "NULLIF",
+   * "NVL2", "READONLY", "ROWNUM", "SESSION_ID", "SET", "TRANSACTION_ID", "TRUNCATE_VALUE",
+   * "CURRENT_PATH", "CURRENT_ROLE", "CURRENT_USER", "H2VERSION"
+   *
+   * <p>Link to the <a
+   * href="https://community.sw.siemens.com/s/question/0D54O000087hf0wSAA/validate-sql-queries-before-running-them">thread</a>
    */
   private String buildSqlQuery(String projId, String spaceId, String docId) {
+
+    if (!validateParameters(projId, spaceId, docId)) {
+      return null;
+    }
 
     StringBuilder sqlQuery = new StringBuilder("select * from WORKITEM WI ");
     sqlQuery.append("inner join PROJECT P on WI.FK_URI_PROJECT = P.C_URI ");
@@ -277,55 +336,51 @@ public class WorkItemUpdatesServlet extends HttpServlet {
    * query. Additionally, it returns all work item Ids that are valid in the database at the moment
    * (after lastUpdate). That return will be used to pass this list of Ids to the response. *
    */
-  private Collection<String> retrieveChanges(String projId, String spaceId, String docId)
+  private Collection<String> retrieveChanges(
+      String projId, String spaceId, String docId, String[] clientKnownIds)
       throws ResourceException {
+
+    final long timeBefore = System.currentTimeMillis();
 
     String sqlQuery = buildSqlQuery(projId, spaceId, docId);
 
+    if (sqlQuery == null || sqlQuery.isEmpty()) {
+      return null;
+    }
+
     IDataService dataService = trackerService.getDataService();
 
-    Collection<String> allValidsItemsLatest = new ArrayList<>();
-
-    long timeBefore = System.currentTimeMillis();
+    final List<String> allValidItemIdsLatest = new ArrayList<>();
 
     IPObjectList<IWorkItem> workItems = dataService.sqlSearch(sqlQuery);
 
     long timeAfter = System.currentTimeMillis();
-    logger.debug("Finished sql query. Execution time in ms: " + (timeAfter - timeBefore));
-
-    timeBefore = System.currentTimeMillis();
-
-    buildRevisionSet(workItems, dataService);
-
-    Integer kRevisionNumber;
-
-    // We either process up to the Kth revision or endRevision
-    // And this will tell whether the response will partial or complete
-    Object[] revisionSortedArray = revisionSortedSet.toArray();
-    if (revisionSortedArray.length > K_CONST) {
-      kRevisionNumber = (Integer) revisionSortedArray[K_CONST];
-      if (kRevisionNumber < endRevision) {
-        endRevision = kRevisionNumber;
-        responseType = ResponseType.PARTIAL;
-      } else {
-        responseType = ResponseType.COMPLETE;
-      }
-    } else {
-      responseType = ResponseType.COMPLETE;
-    }
+    logger.debug("Finished sql query. Execution time (ms): " + (timeAfter - timeBefore));
 
     WorkItemUpdatesCollector workItemUpdatesCollector =
         new WorkItemUpdatesCollector(
             lastUpdate, endRevision, includeCustomFields, includeLinkRoles);
 
-    for (IWorkItem workItem : workItems) {
+    boolean closing = false;
 
-      // Only check history if there were changes after lastUpdate
-      if (Integer.valueOf(workItem.getLastRevision()) > lastUpdate) {
+    for (int i = 0; i < workItems.size() && !closing; i++) {
+      IWorkItem workItem = workItems.get(i);
+
+      timeAfter = System.currentTimeMillis();
+      if ((timeAfter - timeBefore) >= TIME_THRESHOLD) {
+        closing = true;
+        responseType = ResponseType.PARTIAL;
+      }
+
+      // Only check history if workItem is not in client's known list and
+      // if there were changes after lastUpdate and if response is not closing
+      if (!closing
+          && Arrays.stream(clientKnownIds).noneMatch(workItem.getId()::equals)
+          && Integer.valueOf(workItem.getLastRevision()) > lastUpdate) {
 
         WorkItemForJson workItemForJson;
 
-        // This is because WIs moved to the recyble bin are still in the Polarion WI table we query
+        // This is because WIs moved to the recycle bin are still in the Polarion WI table we query
         if (wasMovedToRecycleBin(workItem) && shouldIncludeItemFromRecybleBin(workItem)) {
           workItemForJson = buildDeletedWorkItemForJson(workItem);
         } else {
@@ -337,37 +392,13 @@ public class WorkItemUpdatesServlet extends HttpServlet {
         }
       }
       // Regardless, add item to the response so the client can do the diff to check for deletions
-      allValidsItemsLatest.add(workItem.getId());
+      allValidItemIdsLatest.add(workItem.getId());
     }
-
-    workItemUpdatesCollector.createOppositeLinkEntries(allItemsToSend);
-    workItemUpdatesCollector.createLinkChangesOppositeEntries(allItemsToSend);
 
     timeAfter = System.currentTimeMillis();
-    logger.info(
-        "Finished processing request. " + "Execution time (ms): " + (timeAfter - timeBefore));
+    logger.debug("Ended history processing. Execution time (ms): " + (timeAfter - timeBefore));
 
-    return allValidsItemsLatest;
-  }
-
-  /**
-   * It'll build an ordered set of revision numbers based on the work items revisions and taking
-   * revisions after the base revision (lastUpdate).
-   */
-  private SortedSet<Integer> buildRevisionSet(
-      IPObjectList<IWorkItem> workItems, IDataService dataService) {
-
-    revisionSortedSet.clear();
-
-    for (IWorkItem workItem : workItems) {
-      IPObjectList<IWorkItem> workItemHistory = dataService.getObjectHistory(workItem);
-      for (IWorkItem workItemVersion : workItemHistory) {
-        if (Integer.valueOf(workItemVersion.getRevision()) > lastUpdate) {
-          revisionSortedSet.add(Integer.valueOf(workItemVersion.getRevision()));
-        }
-      }
-    }
-    return revisionSortedSet;
+    return allValidItemIdsLatest;
   }
 
   /**
@@ -391,7 +422,8 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   /** Create the work item object as DELETED */
   private WorkItemForJson buildDeletedWorkItemForJson(IWorkItem workItem) {
-    WorkItemForJson item = new WorkItemForJson(workItem.getId(), UpdateType.DELETED);
+    WorkItemForJson item =
+        new WorkItemForJson(workItem.getId(), workItem.getUri().toString(), UpdateType.DELETED);
     // Note: Items in the recycle bin can still undergo changes. For instance, if
     // any of their field values change, or their links, or even if their module changes id,
     // it'll generate a new revision and changes will be tracked by Polarion.
@@ -419,7 +451,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     try {
       IProject projObj = trackerService.getProjectsService().getProject(projectId);
 
-      logger.info("Attempting to read projectID: " + projObj.getId());
+      logger.debug("Attempting to read projectID: " + projObj.getId());
 
       return true;
 
@@ -431,10 +463,10 @@ public class WorkItemUpdatesServlet extends HttpServlet {
 
   private boolean validateSpaceId(String projId, String spaceId) {
     if (trackerService.getFolderManager().existFolder(projId, spaceId)) {
-      logger.info("Attempting to read folder: " + spaceId);
+      logger.debug("Attempting to read folder: " + spaceId);
       return true;
     }
-    logger.info("Not possible to find folder with id: " + spaceId);
+    logger.error("Not possible to find folder with id: " + spaceId);
     return false;
   }
 
@@ -457,11 +489,11 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     for (IModule module : modules) {
       if (module.getId().equals(docId)) {
         this.module = module;
-        logger.info("Attempting to read document: " + docId);
+        logger.debug("Attempting to read document: " + docId);
         return true;
       }
     }
-    logger.info("Not possible to find document with id: " + docId);
+    logger.error("Not possible to find document with id: " + docId);
     return false;
   }
 
@@ -477,7 +509,7 @@ public class WorkItemUpdatesServlet extends HttpServlet {
       return false;
     }
 
-    IEnumeration<IEnumOption> linkRolesEnum;
+    IEnumeration linkRolesEnum;
     try {
       // This Polarion method getEnumerationForEnumId returns an unparameterized IEnumeration
       // which we parameterize to IEnumeration<IEnumOption>, that's why we add the try/catch
@@ -498,21 +530,29 @@ public class WorkItemUpdatesServlet extends HttpServlet {
     }
 
     List<IEnumOption> allLinkRoles = linkRolesEnum.getAllOptions();
-    if (allLinkRoles != null && !allLinkRoles.isEmpty()) {
-      Set<String> allLinkRolesStrSet =
-          allLinkRoles.stream().map(linkRole -> linkRole.getId()).collect(Collectors.toSet());
-      String[] newLinkRolesList =
-          Arrays.asList(includeLinkRoles).stream()
-              .filter(linkRole -> allLinkRolesStrSet.contains(linkRole))
-              .toArray(String[]::new);
-      if (newLinkRolesList.length > 0) {
-        includeLinkRoles = newLinkRolesList;
-      } else {
-        includeLinkRoles = null;
-      }
-      return true;
+    if (allLinkRoles == null || allLinkRoles.isEmpty()) {
+      // if there aren't link roles set up then we cannot validate the requested linkRoles
+      return false;
     }
-    // if there are not link roles set up then we cannot validate the requested linkRoles
-    return false;
+    Set<String> allLinkRolesStrSet = new HashSet<String>();
+    allLinkRoles.stream()
+        .forEach(
+            linkRole -> {
+              allLinkRolesStrSet.add(linkRole.getName());
+              String oppositeName = linkRole.getProperty("oppositeName");
+              if (oppositeName != null && !oppositeName.isEmpty()) {
+                allLinkRolesStrSet.add(oppositeName);
+              }
+            });
+    String[] newLinkRolesList =
+        Arrays.asList(includeLinkRoles).stream()
+            .filter(linkRole -> allLinkRolesStrSet.contains(linkRole))
+            .toArray(String[]::new);
+    if (newLinkRolesList.length > 0) {
+      includeLinkRoles = newLinkRolesList;
+    } else {
+      includeLinkRoles = null;
+    }
+    return true;
   }
 }

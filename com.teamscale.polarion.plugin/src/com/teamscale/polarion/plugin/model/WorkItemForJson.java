@@ -12,6 +12,7 @@ import java.util.Map;
 public class WorkItemForJson {
 
   private String id;
+  private String uri;
   private UpdateType updateType;
   private String revision;
   private String description;
@@ -35,6 +36,7 @@ public class WorkItemForJson {
   private String updated; // date-time format
   private String moduleId;
   private String moduleTitle;
+  private String moduleFolder;
   private String projectId;
   private Map<String, Object> customFields;
   private List<String> assignees;
@@ -42,17 +44,19 @@ public class WorkItemForJson {
   private String author;
   private List<String> categories;
   private String[] comments;
-  private List<LinkedWorkItem> linkedWorkItems; // All links (in and out links)
+  private List<LinkedWorkItem> linkedWorkItems;
   private List<String> watchers;
 
   private Collection<WorkItemChange> workItemChanges;
 
-  public WorkItemForJson(String id) {
+  public WorkItemForJson(String id, String uri) {
     this.id = id;
+    this.uri = uri;
   }
 
-  public WorkItemForJson(String id, UpdateType updateType) {
+  public WorkItemForJson(String id, String uri, UpdateType updateType) {
     this.id = id;
+    this.uri = uri;
     this.updateType = updateType;
   }
 
@@ -62,6 +66,14 @@ public class WorkItemForJson {
 
   public void setId(String workItemId) {
     this.id = workItemId;
+  }
+
+  public String getUri() {
+    return uri;
+  }
+
+  public void setUri(String uri) {
+    this.uri = uri;
   }
 
   public UpdateType getUpdateType() {
@@ -320,6 +332,14 @@ public class WorkItemForJson {
 
   public void setModuleTitle(String moduleTitle) {
     this.moduleTitle = moduleTitle;
+  }
+
+  public String getModuleFolder() {
+    return moduleFolder;
+  }
+
+  public void setModuleFolder(String moduleFolder) {
+    this.moduleFolder = moduleFolder;
   }
 
   public String getProjectId() {

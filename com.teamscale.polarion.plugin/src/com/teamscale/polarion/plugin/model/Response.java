@@ -5,8 +5,11 @@ import java.util.Collection;
 /** This class wraps the response content to be serialized to Json. */
 public class Response {
 
-  /** All items present (not deleted) in the latest revision of the proj/folder/doc */
+  /** All item ids present (not deleted) in the latest revision of the proj/folder/doc */
   private final Collection<String> allItemsIds;
+
+  /** Item ids that were able to be fully processed. */
+  private final Collection<String> itemsIdsProcessed;
 
   private final ResponseType responseType;
 
@@ -31,11 +34,13 @@ public class Response {
    */
   public Response(
       Collection<String> allItemsIds,
+      Collection<String> itemsIdsProcessed,
       Collection<WorkItemForJson> workItems,
       ResponseType responseType,
       String fromRevision,
       String toRevision) {
     this.allItemsIds = allItemsIds;
+    this.itemsIdsProcessed = itemsIdsProcessed;
     this.workItems = workItems;
     this.responseType = responseType;
     this.fromRevision = fromRevision;
@@ -44,6 +49,10 @@ public class Response {
 
   public Collection<String> getAllItemsIds() {
     return allItemsIds;
+  }
+
+  public Collection<String> getItemsIdsProcessed() {
+    return itemsIdsProcessed;
   }
 
   public Collection<WorkItemForJson> getWorkItems() {

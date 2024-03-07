@@ -2,11 +2,9 @@ package com.teamscale.polarion.plugin.utils;
 
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.projects.model.IUser;
-import com.polarion.alm.tracker.model.IApprovalStruct;
 import com.polarion.alm.tracker.model.IAttachment;
 import com.polarion.alm.tracker.model.ICategory;
 import com.polarion.alm.tracker.model.IComment;
-import com.polarion.alm.tracker.model.IHyperlinkStruct;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
@@ -16,11 +14,9 @@ import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.ITypedList;
 import com.polarion.subterra.base.location.ILocation;
-import com.teamscale.polarion.plugin.model.LinkDirection;
 import com.teamscale.polarion.plugin.model.LinkedWorkItem;
 import com.teamscale.polarion.plugin.model.UpdateType;
 import com.teamscale.polarion.plugin.model.WorkItemForJson;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,8 +26,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class Utils {
+/**
+ * General utility class for helping work item history and prepping objects for json serialization.
+ */
+public class CastUtils {
 
+  /** Polarion field name for linked work items -- */
   public static final String LINKED_WORK_ITEMS_FIELD_NAME = "linkedWorkItems";
 
   /**
@@ -42,9 +42,12 @@ public class Utils {
       IWorkItem workItem,
       String[] includeCustomFields,
       String[] includeLinkRoles,
-      Map<String, ILinkRoleOpt> linkNamesMap) {
+      Map<String, ILinkRoleOpt> linkNamesMap,
+      UpdateType updateType) {
 
-    WorkItemForJson workItemForJson = new WorkItemForJson(workItem.getId(), UpdateType.UPDATED);
+    WorkItemForJson workItemForJson =
+        new WorkItemForJson(workItem.getId(), workItem.getUri().toString(), updateType);
+
     if (workItem.getRevision() != null) {
       workItemForJson.setRevision(workItem.getRevision());
     }
@@ -82,16 +85,16 @@ public class Utils {
       workItemForJson.setRemainingEstimate(workItem.getRemainingEstimate().toString());
     }
     if (workItem.getResolution() != null) {
-      workItemForJson.setResolution(workItem.getResolution().getName());
+      workItemForJson.setResolution(workItem.getResolution().getId());
     }
     if (workItem.getResolvedOn() != null) {
       workItemForJson.setResolvedOn(workItem.getResolvedOn().toInstant().toString());
     }
     if (workItem.getSeverity() != null) {
-      workItemForJson.setSeverity(workItem.getSeverity().getName());
+      workItemForJson.setSeverity(workItem.getSeverity().getId());
     }
     if (workItem.getStatus() != null) {
-      workItemForJson.setStatus(workItem.getStatus().getName());
+      workItemForJson.setStatus(workItem.getStatus().getId());
     }
     if (workItem.getTimeSpent() != null) {
       workItemForJson.setTimeSpent(workItem.getTimeSpent().toString());
@@ -100,16 +103,16 @@ public class Utils {
       workItemForJson.setTitle(workItem.getTitle());
     }
     if (workItem.getType() != null) {
-      workItemForJson.setType(workItem.getType().getName());
+      workItemForJson.setType(workItem.getType().getId());
     }
     if (workItem.getUpdated() != null) {
       workItemForJson.setUpdated(workItem.getUpdated().toInstant().toString());
     }
     if (workItem.getModule() != null) {
-      workItemForJson.setModuleId(workItem.getModule().getId());
-    }
-    if (workItem.getModule() != null) {
-      workItemForJson.setModuleTitle(workItem.getModule().getTitleOrName());
+      IModule module = workItem.getModule();
+      workItemForJson.setModuleId(module.getId());
+      workItemForJson.setModuleTitle(module.getTitleOrName());
+      workItemForJson.setModuleFolder(module.getModuleFolder());
     }
     if (workItem.getProjectId() != null) {
       workItemForJson.setProjectId(workItem.getProjectId());
@@ -136,7 +139,8 @@ public class Utils {
       workItemForJson.setCategories(castCollectionToStrList(workItem.getCategories()));
     }
     if (workItem.getHyperlinks() != null && !workItem.getHyperlinks().isEmpty()) {
-      workItemForJson.setHyperLinks(castHyperlinksToStrList(workItem.getHyperlinks()));
+      workItemForJson.setHyperLinks(
+          CollectionsAndEnumsUtils.castHyperlinksToStrList(workItem.getHyperlinks()));
     }
     if (workItem.getComments() != null && !workItem.getComments().isEmpty()) {
       workItemForJson.setComments(
@@ -151,127 +155,59 @@ public class Utils {
 
       List<ILinkedWorkItemStruct> directLinksStruct =
           (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsDirect();
-      List<LinkedWorkItem> linkedItems =
+      List<ILinkedWorkItemStruct> backLinksStruct =
+          (List<ILinkedWorkItemStruct>) workItem.getLinkedWorkItemsStructsBack();
+
+      // directLinksStruct.addAll(backLinksStruct); // both direct and back links
+
+      List<LinkedWorkItem> linkedItemsDirect =
           (List<LinkedWorkItem>)
               directLinksStruct.stream()
                   .filter(
                       linkStruct ->
                           Arrays.asList(includeLinkRoles)
-                              .contains(linkStruct.getLinkRole().getId()))
+                              .contains(linkStruct.getLinkRole().getName()))
                   .map(
                       linkStruct -> {
                         linkNamesMap.putIfAbsent(
-                            linkStruct.getLinkRole().getId(), linkStruct.getLinkRole());
+                            linkStruct.getLinkRole().getName(), linkStruct.getLinkRole());
 
                         return new LinkedWorkItem(
                             linkStruct.getLinkedItem().getId(),
+                            linkStruct.getLinkedItem().getUri().toString(),
                             linkStruct.getLinkRole().getId(),
-                            linkStruct.getLinkRole().getName(),
-                            LinkDirection.OUT);
+                            linkStruct.getLinkRole().getName());
                       })
                   .collect(Collectors.toList());
-      if (!linkedItems.isEmpty()) {
-        workItemForJson.setLinkedWorkItems(linkedItems);
+
+      List<LinkedWorkItem> linkedItemsBack =
+          (List<LinkedWorkItem>)
+              backLinksStruct.stream()
+                  .filter(
+                      linkStruct ->
+                          Arrays.asList(includeLinkRoles)
+                              .contains(linkStruct.getLinkRole().getOppositeName()))
+                  .map(
+                      linkStruct -> {
+                        linkNamesMap.putIfAbsent(
+                            linkStruct.getLinkRole().getOppositeName(), linkStruct.getLinkRole());
+
+                        return new LinkedWorkItem(
+                            linkStruct.getLinkedItem().getId(),
+                            linkStruct.getLinkedItem().getUri().toString(),
+                            linkStruct.getLinkRole().getId(),
+                            linkStruct.getLinkRole().getOppositeName());
+                      })
+                  .collect(Collectors.toList());
+      if (!linkedItemsDirect.isEmpty()) {
+        workItemForJson.setLinkedWorkItems(linkedItemsDirect);
+      }
+      if (!linkedItemsBack.isEmpty()) {
+        workItemForJson.addAllLinkedWorkItems(linkedItemsBack);
       }
     }
 
     return workItemForJson;
-  }
-
-  /**
-   * Takes a raw collection of Polarion hyperlinks and converts to a list of strings (link URIs).
-   */
-  public static List<String> castHyperlinksToStrList(Collection hyperlinks) {
-    List<String> result = new ArrayList<>();
-    if (isCollectionHyperlinkStructList(hyperlinks)) {
-      try {
-        List<IHyperlinkStruct> collection = (List<IHyperlinkStruct>) hyperlinks;
-        result =
-            collection.stream()
-                .map(elem -> ((IHyperlinkStruct) elem).getUri())
-                .collect(Collectors.toList());
-      } catch (ClassCastException ex) {
-        // casting should not be an issue since we're checking it on the if
-        return result;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Takes a raw collection of Polarion linkStructs and converts to a list of strings (the linked
-   * items IDs).
-   */
-  public static List<String> castLinkedWorkItemsToStrList(Collection linkedItems) {
-    List<String> result = new ArrayList<>();
-    if (isCollectionLinkedWorkItemStructList(linkedItems)) {
-      try {
-        List<ILinkedWorkItemStruct> collection = (List<ILinkedWorkItemStruct>) linkedItems;
-        result =
-            collection.stream()
-                .map(elem -> elem.getLinkedItem().getId())
-                .collect(Collectors.toList());
-      } catch (ClassCastException ex) {
-        // casting should not be an issue since we're checking it on the if
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Takes a raw collection of Polarion approvalStructs and converts to a list of strings (the users
-   * IDs).
-   */
-  public static List<String> castApprovalsToStrList(Collection approvals) {
-    List<String> result = new ArrayList<>();
-    if (isCollectionApprovalStructList(approvals)) {
-      try {
-        List<IApprovalStruct> collection = (List<IApprovalStruct>) approvals;
-        result =
-            collection.stream()
-                .map(elem -> ((IApprovalStruct) elem).getUser().getId())
-                .collect(Collectors.toList());
-      } catch (ClassCastException ex) {
-        // casting should not be an issue since we're checking it on the if
-      }
-    }
-    return result;
-  }
-
-  /** This will return false if the list is empty, even if the list is of type IHyperlinkStruct */
-  public static boolean isCollectionHyperlinkStructList(Collection collection) {
-    if (collection instanceof List) {
-      List<?> list = (List<?>) collection;
-      if (!list.isEmpty() && list.get(0) instanceof IHyperlinkStruct) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * This will return false if the list is empty, even if the list is of type
-   * ILinkedWorkedItemStruct
-   */
-  public static boolean isCollectionLinkedWorkItemStructList(Collection collection) {
-    if (collection instanceof List) {
-      List<?> list = (List<?>) collection;
-      if (!list.isEmpty() && list.get(0) instanceof ILinkedWorkItemStruct) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /** This will return false if the list is empty, even if the list is of type IApprovalStruct */
-  public static boolean isCollectionApprovalStructList(Collection collection) {
-    if (collection instanceof List) {
-      List<?> list = (List<?>) collection;
-      if (!list.isEmpty() && list.get(0) instanceof IApprovalStruct) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private static HashMap<String, Object> castCustomFields(

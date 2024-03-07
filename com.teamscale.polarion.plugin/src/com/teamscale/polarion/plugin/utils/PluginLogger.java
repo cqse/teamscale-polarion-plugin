@@ -13,6 +13,7 @@ public class PluginLogger implements ILogger {
 
   private static final String PREFIX = "[Teamscale Polarion Plugin] ";
 
+  /** Logs message - debug level */
   public void debug(Object message) {
     if (message instanceof String) {
       logger.debug(PREFIX + message);
@@ -21,6 +22,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message with exception - debug level */
   public void debug(Object message, Throwable exception) {
     if (message instanceof String) {
       logger.debug(PREFIX + message, exception);
@@ -29,6 +31,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message - error level */
   public void error(Object message) {
     if (message instanceof String) {
       logger.error(PREFIX + message);
@@ -37,6 +40,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message with exception - error level */
   public void error(Object message, Throwable exception) {
     if (message instanceof String) {
       logger.error(PREFIX + message, exception);
@@ -45,6 +49,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message - fatal level */
   public void fatal(Object message) {
     if (message instanceof String) {
       logger.fatal(PREFIX + message);
@@ -53,6 +58,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message with exception - fatal level */
   public void fatal(Object message, Throwable exception) {
     if (message instanceof String) {
       logger.fatal(PREFIX + message, exception);
@@ -61,6 +67,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message - info level */
   public void info(Object message) {
     if (message instanceof String) {
       logger.info(PREFIX + message);
@@ -69,6 +76,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message with exception - info level */
   public void info(Object message, Throwable exception) {
     if (message instanceof String) {
       logger.info(PREFIX + message, exception);
@@ -77,30 +85,37 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Checks if debug logging level is enabled */
   public boolean isDebugEnabled() {
     return logger.isDebugEnabled();
   }
 
+  /** Checks if error logging level is enabled */
   public boolean isErrorEnabled() {
     return logger.isErrorEnabled();
   }
 
+  /** Checks if fatal logging level is enabled */
   public boolean isFatalEnabled() {
     return logger.isFatalEnabled();
   }
 
+  /** Checks if info logging level is enabled */
   public boolean isInfoEnabled() {
     return logger.isInfoEnabled();
   }
 
+  /** Checks if trace logging level is enabled */
   public boolean isTraceEnabled() {
     return logger.isTraceEnabled();
   }
 
+  /** Checks if warn logging level is enabled */
   public boolean isWarnEnabled() {
     return logger.isWarnEnabled();
   }
 
+  /** Logs message - trace level */
   public void trace(Object message) {
     if (message instanceof String) {
       logger.trace(PREFIX + message);
@@ -109,6 +124,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message with exception - trace level */
   public void trace(Object message, Throwable exception) {
     if (message instanceof String) {
       logger.trace(PREFIX + message, exception);
@@ -117,6 +133,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message - warn level */
   public void warn(Object message) {
     if (message instanceof String) {
       logger.warn(PREFIX + message);
@@ -125,6 +142,7 @@ public class PluginLogger implements ILogger {
     }
   }
 
+  /** Logs message with exception - warn level */
   public void warn(Object message, Throwable exception) {
     if (message instanceof String) {
       logger.warn(PREFIX + message, exception);

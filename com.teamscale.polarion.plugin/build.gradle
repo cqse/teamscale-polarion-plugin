@@ -4,11 +4,14 @@ plugins {
 
 description = "Teamscale Polarion plugin for Polarion v22 R2"
 
-version = '0.0.1'
-
+project.version = '0.0.5'
 
 sourceSets {
     main.java.srcDirs = ['src']
+}
+
+repositories {
+    mavenCentral()
 }
 
 /*
@@ -40,7 +43,12 @@ jar {
     }
     manifest {
         from 'META-INF/MANIFEST.MF'
+        attributes 'Bundle-Version': '0.0.5'
     }
     exclude('com/teamscale/polarion/plugin/client')     
     
+}
+
+task showMeCache doLast() {
+    configurations.compileClasspath.each { println it }
 }

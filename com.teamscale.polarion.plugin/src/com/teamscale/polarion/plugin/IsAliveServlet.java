@@ -2,6 +2,9 @@ package com.teamscale.polarion.plugin;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URL;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -26,7 +29,11 @@ public class IsAliveServlet extends HttpServlet {
       throws ServletException, IOException {
     res.setContentType("text/plain");
     PrintWriter out = res.getWriter();
-    out.print("Alive! I'm ready to crunch some work items!");
+    URL manifestUrl = IsAliveServlet.class.getResource("/META-INF/MANIFEST.MF");
+    Manifest manifest = new Manifest(manifestUrl.openStream());
+    Attributes attrs = manifest.getMainAttributes();
+    String version = attrs.getValue("Bundle-Version");
+    out.print("Alive! I'm ready to crunch some work items! v" + version);
   }
 
   /**

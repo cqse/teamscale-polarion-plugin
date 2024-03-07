@@ -10,14 +10,14 @@ public class LinkFieldDiff extends WorkItemFieldDiff {
 
   private final String linkRoleId;
   private final String linkRoleName;
-  private final LinkDirection linkDirection;
+  private final String oppositeLinkRoleName;
 
   public LinkFieldDiff(
-      String fieldName, String linkRoleId, String linkRoleName, LinkDirection linkDirection) {
+      String fieldName, String linkRoleId, String linkRoleName, String oppositeLinkRoleName) {
     super(fieldName);
     this.linkRoleId = linkRoleId;
     this.linkRoleName = linkRoleName;
-    this.linkDirection = linkDirection;
+    this.oppositeLinkRoleName = oppositeLinkRoleName;
   }
 
   public String getLinkRoleId() {
@@ -28,7 +28,7 @@ public class LinkFieldDiff extends WorkItemFieldDiff {
     return linkRoleName;
   }
 
-  public LinkDirection getLinkDirection() {
-    return linkDirection;
+  public String getOppositeLinkRoleName() {
+    return oppositeLinkRoleName;
   }
 }
